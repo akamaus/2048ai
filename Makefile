@@ -1,2 +1,2 @@
 all: board.hpp main.cpp
-	gcc main.cpp -lstdc++
+	gcc --std=c++11 main.cpp -lstdc++
