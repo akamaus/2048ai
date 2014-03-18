@@ -1,7 +1,10 @@
+#include <stdlib.h>
+
 #include <array>
 #include <iostream>
-
 #include <cassert>
+
+
 
 enum class Turn { Left, Right, Up, Down };
 
@@ -9,8 +12,9 @@ typedef uint8_t value;
 
 template <uint size>
 class Board {
+    const static value new_cell = 1;
 public:
-    Board(): _board {0} {}
+    Board(): _board{0}, _board_merges{0}, _num_free(size*size), _cur_turn{0} {}
 
     void Print() {
         for (int i=0; i<size; i++) {
@@ -24,14 +28,23 @@ public:
             std::cout << std::endl;
         }
     }
-
+private:
     value &At(uint i, uint j) {
         assert(i<size);
         assert(j<size);
         return _board[i*size + j];
     }
 
-    void Move(Turn t) {
+    bool MergedAt(uint i, uint j) {
+        return _board_merges[i*size + j] == _cur_turn;
+    }
+
+    void MergeAt(uint i, uint j) {
+        _board_merges[i*size + j] = _cur_turn;
+    }
+public:
+    bool Move(Turn t) {
+        _cur_turn++;
         bool changed = false;
         for (uint k=0; k<size; k++) {
             for (uint m=0; m<size; m++) {
@@ -57,28 +70,67 @@ public:
                     };
                     value &cur(At(cur_i, cur_j));
                     value &next(At(next_i, next_j));
-                    if (next == 0)
+                    if (next == 0) // nothing to move
                         continue;
-                    if (cur == 0 && next != 0) {
+                    if (cur == 0 && next != 0) { // move
                         cur = next;
                         next = 0;
                         changed |= true;
                         continue;
                     }
-                    if (cur != 0 && cur == next) {
+                    if (cur != 0 && cur == next && !MergedAt(cur_i, cur_j) && !MergedAt(next_i, next_j)) { // merge
                         cur++;
                         next = 0;
                         changed |= true;
+                        MergeAt(cur_i, cur_j);
+                        _num_free++;
                         continue;
                     }
                 }
             }
-            if (!changed)
+            if (!changed) {
+                if (k == 0) {
+                    return false;
+                }
                 break;
+            }
+        }
+        return true;
+    }
 
+    void Gen(uint nth) {
+        assert(nth < _num_free);
+
+        for (int i=0; i<size; i++) {
+            for (int j=0; j<size; j++) {
+                if (At(i,j) == 0) {
+                    if (nth == 0) {
+                        At(i,j) = Board::new_cell;
+                        _num_free--;
+                        return;
+                    }
+                    else
+                        nth--;
+                }
+            }
         }
     }
 
-    std::array<value, size*size> _board;
-};
+    void RandomGen() {
+        if (_num_free == 0)
+            return;
 
+        uint nth = rand() % _num_free;
+        Gen(nth);
+    }
+
+    uint NumFree() const {
+        return _num_free;
+    }
+
+private:
+    std::array<value, size*size> _board; // a board
+    std::array<value, size*size> _board_merges; // a mask of recent merges
+    uint _num_free; // number of free cells
+    uint _cur_turn; // turn number
+};
