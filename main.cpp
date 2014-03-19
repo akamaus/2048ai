@@ -12,6 +12,7 @@ double eval_board(const GameBoard &board);
 
 std::string print_turn(Turn t);
 
+/*
 MoveAnalysis get_worst_rnd(GameBoard board, Turn t, uint depth) {
     board.Move(t);
     if (depth == 0) {
@@ -32,20 +33,31 @@ MoveAnalysis get_worst_rnd(GameBoard board, Turn t, uint depth) {
     }
     return worst;
 }
+*/
 
-MoveAnalysis get_best_move(GameBoard board, uint k, uint depth) {
+double get_best_move(const GameBoard &board, uint depth, Turn &ret_turn) {
     static std::array<Turn,4> moves = {Turn::Left, Turn::Right, Turn::Up, Turn::Down};
-    board.Gen(k);
 
-    MoveAnalysis best { Turn::Left, -1 };
-    for (auto next_turn : moves) {
-        auto result = get_worst_rnd(board, next_turn, depth);
-//        std::cout << "depth " << depth << "; move " << print_turn(std::get<0>(result)) << "; rating " << std::get<1>(result) << std::endl;
-        if (std::get<1>(best) < std::get<1>(result)) {
-            best = result;
+    if(depth == 0) {
+        return eval_board(board);
+    }
+
+    depth--;
+
+    double best_score = -1;
+    Turn best_turn;
+    for (auto turn : moves) {
+        GameBoard b(board); Turn t;
+        if (b.Move(turn)) {
+            double score = get_best_move(b, depth,t);
+            if (score > best_score) {
+                best_score = score;
+                best_turn = turn;
+            }
         }
     }
-    return best;
+    ret_turn = best_turn;
+    return best_score;
 }
 
 double eval_board(const GameBoard &board) {
@@ -98,25 +110,46 @@ std::string print_turn(Turn t) {
     case Turn::Down:
         return std::string{"Down"};
     }
+    return "UNKNOWN";
 }
 
-void ai(uint depth) {
+uint ai(uint depth, bool display) {
     GameBoard b;
     b.RandomGen();
 
     while(b.NumFree() > 0) {
-        uint k = rand() % b.NumFree();
+        b.RandomGen();
+        if (display) {
+            b.Print();
+        }
 
-        auto res = get_best_move(b, k, depth);
-        b.Gen(rand() % b.NumFree());
-        b.Print(); std::cout << "       move " << print_turn(std::get<0>(res)) << std::endl;
-        b.Move(std::get<0>(res));
-        b.Print(); std::cout << std::endl << std::endl;
+        Turn best_turn;
+        double score = get_best_move(b, depth, best_turn);
+        if (score >= 0) {
+            if (display) {
+                std::cout << "       move " << print_turn(best_turn) << std::endl;
+            }
+            b.Move(best_turn);
+        }
     }
-    std::cout << "Turn " << b.GetTurn() << std::endl;
+    if (display) std::cout << "Turn " << b.GetTurn() << std::endl;
+    return b.GetTurn();
 }
 
-int main() {
+const uint num_trials = 100;
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) return -1;
+
+    int depth = atoi(argv[1]);
+
+    uint sum = 0;
+    for (uint i=0; i<num_trials; i++) {
+        uint res = ai(depth, false);
+        std::cout << res << " ";
+        sum += res;
+    }
+    std::cout << "\n Avg: " << (double)sum / num_trials << std::endl;
     //   interactive();
-    ai(3);
+//    ai(1);
 }
