@@ -10,12 +10,18 @@ MoveAnalysis get_worst_rnd(GameBoard board, Turn t, uint depth);
 MoveAnalysis get_best_move(GameBoard board, uint k, uint depth);
 double eval_board(const GameBoard &board);
 
+std::string print_turn(Turn t);
+
 MoveAnalysis get_worst_rnd(GameBoard board, Turn t, uint depth) {
     board.Move(t);
     if (depth == 0) {
         return std::make_tuple(t, eval_board(board));
     }
     depth--;
+
+    if (board.NumFree() == 0) {
+        return std::make_tuple(Turn::Left, -1000);
+    }
 
     MoveAnalysis worst { Turn::Left, 1e10};
     for (uint k=0; k<board.NumFree(); k++) {
@@ -34,6 +40,7 @@ MoveAnalysis get_best_move(GameBoard board, uint k, uint depth) {
     MoveAnalysis best { Turn::Left, -1 };
     for (auto next_turn : moves) {
         auto result = get_worst_rnd(board, next_turn, depth);
+//        std::cout << "depth " << depth << "; move " << print_turn(std::get<0>(result)) << "; rating " << std::get<1>(result) << std::endl;
         if (std::get<1>(best) < std::get<1>(result)) {
             best = result;
         }
@@ -93,22 +100,23 @@ std::string print_turn(Turn t) {
     }
 }
 
-void ai() {
+void ai(uint depth) {
     GameBoard b;
     b.RandomGen();
 
     while(b.NumFree() > 0) {
         uint k = rand() % b.NumFree();
 
-        auto res = get_best_move(b, k, 1);
-        b.Gen(k);
+        auto res = get_best_move(b, k, depth);
+        b.Gen(rand() % b.NumFree());
         b.Print(); std::cout << "       move " << print_turn(std::get<0>(res)) << std::endl;
         b.Move(std::get<0>(res));
         b.Print(); std::cout << std::endl << std::endl;
     }
+    std::cout << "Turn " << b.GetTurn() << std::endl;
 }
 
 int main() {
     //   interactive();
-    ai();
+    ai(3);
 }

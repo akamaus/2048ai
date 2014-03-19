@@ -127,6 +127,9 @@ public:
     uint NumFree() const {
         return _num_free;
     }
+    uint GetTurn() const {
+        return _cur_turn;
+    }
 
 private:
     std::array<value, size*size> _board; // a board
