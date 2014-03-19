@@ -35,6 +35,13 @@ private:
         return _board[i*size + j];
     }
 
+    value At(uint i, uint j) const {
+        assert(i<size);
+        assert(j<size);
+        return _board[i*size + j];
+    }
+
+
     bool MergedAt(uint i, uint j) {
         return _board_merges[i*size + j] == _cur_turn;
     }
@@ -130,6 +137,15 @@ public:
     }
     uint GetTurn() const {
         return _cur_turn;
+    }
+    uint BestTile() const {
+        uint best = 0;
+        for (int i=0; i<size; i++) {
+            for (int j=0; j<size; j++) {
+                if (At(i,j) > best) best = At(i,j);
+            }
+        }
+        return best;
     }
 
 private:

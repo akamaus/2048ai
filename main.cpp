@@ -142,15 +142,20 @@ GameBoard ai(uint depth, bool display) {
 const uint num_trials = 100;
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) return -1;
+    if (argc != 2) {
+        std::cerr << "Usage: ./ai2048 <depth>" << std::endl;
+        return -1;
+    }
 
     int depth = atoi(argv[1]);
 
     uint sum = 0;
     uint best = 0;
+    uint num_wins = 0;
     for (uint i=0; i<num_trials; i++) {
         GameBoard rb = ai(depth, false);
         uint score = rb.GetTurn();
+        if (rb.BestTile() >= 11) num_wins++;
         if (score > best) {
             std::cout << "Got " << score << " at iteration " << i << std::endl;
             rb.Print();
@@ -159,6 +164,6 @@ int main(int argc, char *argv[]) {
         sum += score;
     }
     std::cout << "\n Avg: " << (double)sum / num_trials << std::endl;
-    //   interactive();
-//    ai(1);
+    std::cout << "Num wins: " << num_wins << std::endl;
+    return 0;
 }
