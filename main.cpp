@@ -115,7 +115,7 @@ std::string print_turn(Turn t) {
     return "UNKNOWN";
 }
 
-uint ai(uint depth, bool display) {
+GameBoard ai(uint depth, bool display) {
     GameBoard b;
     b.RandomGen();
 
@@ -135,7 +135,8 @@ uint ai(uint depth, bool display) {
         }
     }
     if (display) std::cout << "Turn " << b.GetTurn() << std::endl;
-    return b.GetTurn();
+
+    return b;
 }
 
 const uint num_trials = 100;
@@ -146,10 +147,16 @@ int main(int argc, char *argv[]) {
     int depth = atoi(argv[1]);
 
     uint sum = 0;
+    uint best = 0;
     for (uint i=0; i<num_trials; i++) {
-        uint res = ai(depth, false);
-        std::cout << res << " ";
-        sum += res;
+        GameBoard rb = ai(depth, false);
+        uint score = rb.GetTurn();
+        if (score > best) {
+            std::cout << "Got " << score << " at iteration " << i << std::endl;
+            rb.Print();
+            best = score;
+        }
+        sum += score;
     }
     std::cout << "\n Avg: " << (double)sum / num_trials << std::endl;
     //   interactive();
