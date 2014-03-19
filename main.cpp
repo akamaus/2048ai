@@ -48,7 +48,9 @@ double get_best_move(const GameBoard &board, uint depth, Turn &ret_turn) {
     Turn best_turn;
     for (auto turn : moves) {
         GameBoard b(board); Turn t;
+
         if (b.Move(turn)) {
+            if (!b.RandomGen()) continue;
             double score = get_best_move(b, depth,t);
             if (score > best_score) {
                 best_score = score;

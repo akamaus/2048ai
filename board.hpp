@@ -116,12 +116,13 @@ public:
         }
     }
 
-    void RandomGen() {
+    bool RandomGen() {
         if (_num_free == 0)
-            return;
+            return false;
 
         uint nth = rand() % _num_free;
         Gen(nth);
+        return true;
     }
 
     uint NumFree() const {
