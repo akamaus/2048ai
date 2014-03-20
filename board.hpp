@@ -6,7 +6,7 @@
 
 
 
-enum class Turn { Left, Right, Up, Down };
+enum class Turn { Left = 0, Right = 1, Up = 2, Down = 3 };
 
 typedef uint8_t value;
 
@@ -16,7 +16,7 @@ class Board {
 public:
     Board(): _board{0}, _board_merges{0}, _num_free(size*size), _cur_turn{0} {}
 
-    void Print() {
+    void Print() const {
         for (int i=0; i<size; i++) {
             for (int j=0; j<size; j++) {
                 uint c = At(i,j);

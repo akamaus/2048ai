@@ -1,10 +1,18 @@
+#include <map>
+#include <functional>
 #include <tuple>
+#include <vector>
+#include <utility>
+
 
 #include "board.hpp"
+
+
 
 using GameBoard = Board<4>;
 
 using MoveAnalysis = std::tuple<Turn, double>;
+using Strategy = std::function<Turn(const GameBoard &)>;
 
 MoveAnalysis get_worst_rnd(GameBoard board, Turn t, uint depth);
 MoveAnalysis get_best_move(GameBoard board, uint k, uint depth);
@@ -115,31 +123,73 @@ std::string print_turn(Turn t) {
     return "UNKNOWN";
 }
 
-GameBoard ai(uint depth, bool display) {
-    GameBoard b;
-    b.RandomGen();
+const uint num_trials = 100;
 
-    while(b.NumFree() > 0) {
-        b.RandomGen();
-        if (display) {
-            b.Print();
-        }
+Strategy make_ai(uint depth) {
+    Strategy s = [depth](const GameBoard &b0) {
+        Turn best_turn = Turn::Left;
+        double score = get_best_move(b0, depth, best_turn);
+        return best_turn;
+    };
 
-        Turn best_turn;
-        double score = get_best_move(b, depth, best_turn);
-        if (score >= 0) {
-            if (display) {
-                std::cout << "       move " << print_turn(best_turn) << std::endl;
-            }
-            b.Move(best_turn);
-        }
-    }
-    if (display) std::cout << "Turn " << b.GetTurn() << std::endl;
-
-    return b;
+    return s;
 }
 
-const uint num_trials = 100;
+Strategy random_strategy = [](const GameBoard &b0) {
+    return static_cast<Turn>(rand()%4);
+};
+
+std::vector<GameBoard> gather_data(Strategy strat) {
+    std::vector<GameBoard> results;
+    for (uint i=0; i< num_trials; i++) {
+        GameBoard b;
+        b.RandomGen();
+
+        while(b.NumFree() > 0) {
+            b.RandomGen();
+
+            Turn t = strat(b);
+//            std::cout << print_turn(t);
+            b.Move(t);
+        }
+        std::cerr << ".";
+        results.push_back(b);
+    }
+    return results;
+}
+
+void print_statistics(const std::vector<GameBoard> &results) {
+    uint sum = 0;
+    uint best = 0;
+    uint worst = 1000000;
+
+    std::map<uint, uint> best_tiles;
+
+    for (const auto &rb : results) {
+        uint score = rb.GetTurn();
+
+        if (score > best) {
+            best = score;
+        } else if (score < worst) {
+            worst = score;
+        }
+        sum += score;
+
+        uint best = rb.BestTile();
+        if (best_tiles.count(best) == 0) {
+            best_tiles.insert(std::make_pair(best, 1));
+        } else {
+            best_tiles[best]++;
+        }
+    }
+    std::cout << "Best: " << best << std::endl;
+    std::cout << "Worst: " << worst << std::endl;
+    std::cout << "Avg: " << (double)sum / results.size() << std::endl << std::endl;
+
+    for (auto it : best_tiles) {
+        std::cout << "[" << it.first << "] = " << it.second << std::endl;
+    }
+}
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -152,18 +202,16 @@ int main(int argc, char *argv[]) {
     uint sum = 0;
     uint best = 0;
     uint num_wins = 0;
-    for (uint i=0; i<num_trials; i++) {
-        GameBoard rb = ai(depth, false);
-        uint score = rb.GetTurn();
-        if (rb.BestTile() >= 11) num_wins++;
-        if (score > best) {
-            std::cout << "Got " << score << " at iteration " << i << std::endl;
-            rb.Print();
-            best = score;
-        }
-        sum += score;
+
+    Strategy s;
+    if (depth > 0) {
+        s = make_ai(depth);
+    } else {
+        s = random_strategy;
     }
-    std::cout << "\n Avg: " << (double)sum / num_trials << std::endl;
-    std::cout << "Num wins: " << num_wins << std::endl;
+
+    auto results = gather_data(s);
+    print_statistics(results);
+
     return 0;
 }
