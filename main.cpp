@@ -7,7 +7,7 @@
 
 #include "board.hpp"
 
-
+#include "reinforce.hpp"
 
 using GameBoard = Board<4>;
 
@@ -128,7 +128,8 @@ const uint num_trials = 100;
 Strategy make_ai(uint depth) {
     Strategy s = [depth](const GameBoard &b0) {
         Turn best_turn = Turn::Left;
-        double score = get_best_move(b0, depth, best_turn);
+//        double score = 
+        get_best_move(b0, depth, best_turn);
         return best_turn;
     };
 
@@ -191,30 +192,47 @@ void print_statistics(const std::vector<GameBoard> &results) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        std::cerr << "Usage: ./ai2048 <depth>" << std::endl;
-        return -1;
+void Usage() {
+    std::cerr << "Usage: ./ai2048 RL <num_trials>" << std::endl;
+    std::cerr << "Usage: ./ai2048 MM <depth>" << std::endl;
+    std::cerr << "Usage: ./ai2048 I" << std::endl;
+
+    exit(1);
+}
+
+void run_minimax(int depth) {
+    Strategy s;
+    if (depth > 0) {
+        s = make_ai(depth);
+    } else {
+        s = random_strategy;
     }
 
-    int depth = atoi(argv[1]);
+    auto results = gather_data(s);
+    print_statistics(results);
+}
 
-    if (depth < 0) {
+void run_reinforcement(int num_trials, double eps) {
+    MCLearner<GameBoard> learner(eps);
+    driver(num_trials, learner);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) Usage();
+
+    std::string mode = argv[1];
+    if (mode == "I") {
         interactive();
     } else {
-        uint sum = 0;
-        uint best = 0;
-        uint num_wins = 0;
-
-        Strategy s;
-        if (depth > 0) {
-            s = make_ai(depth);
-        } else {
-            s = random_strategy;
-        }
-
-        auto results = gather_data(s);
-        print_statistics(results);
+        if (mode == "RL") {
+            if (argc != 4) Usage();
+            int trials = atoi(argv[2]);
+            double eps = atoi(argv[3]);
+            run_reinforcement(trials, eps);
+        } else if (mode == "MM") {
+            int depth = atoi(argv[2]);
+            run_minimax(depth);
+        } else Usage();
     }
 
     return 0;

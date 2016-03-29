@@ -10,15 +10,34 @@ enum class Turn { Left = 0, Right = 1, Up = 2, Down = 3 };
 
 typedef uint8_t value;
 
+std::array<Turn,4> all_turns = {Turn::Left, Turn::Right, Turn::Up, Turn::Down};
+
 template <uint size>
 class Board {
     const static value new_cell = 1;
 public:
     Board(): _board{0}, _board_merges{0}, _num_free(size*size), _cur_turn{0} {}
 
+    using BoardT = std::array<value, size*size>;
+    using Action = Turn;
+    using Compressed = unsigned long;
+
+    Compressed Compress() const {
+        Compressed res = 0;
+        for (value elt : _board) {
+            assert(elt < 16);
+            res = (res << 4) | elt;
+        }
+        return res;
+    }
+
+    static const std::array<Turn,4> &GetTurns() {
+        return all_turns;
+    }
+
     void Print() const {
-        for (int i=0; i<size; i++) {
-            for (int j=0; j<size; j++) {
+        for (uint i=0; i<size; i++) {
+            for (uint j=0; j<size; j++) {
                 uint c = At(i,j);
                 if (c == 0)
                     std::cout << '.';
@@ -108,8 +127,8 @@ public:
     void Gen(uint nth) {
         assert(nth < _num_free);
 
-        for (int i=0; i<size; i++) {
-            for (int j=0; j<size; j++) {
+        for (uint i=0; i<size; i++) {
+            for (uint j=0; j<size; j++) {
                 if (At(i,j) == 0) {
                     if (nth == 0) {
                         At(i,j) = Board::new_cell;
@@ -140,8 +159,8 @@ public:
     }
     uint BestTile() const {
         uint best = 0;
-        for (int i=0; i<size; i++) {
-            for (int j=0; j<size; j++) {
+        for (uint i=0; i<size; i++) {
+            for (uint j=0; j<size; j++) {
                 if (At(i,j) > best) best = At(i,j);
             }
         }
