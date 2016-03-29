@@ -192,26 +192,30 @@ void print_statistics(const std::vector<GameBoard> &results) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
+    if (argc != 3) {
         std::cerr << "Usage: ./ai2048 <depth>" << std::endl;
         return -1;
     }
 
     int depth = atoi(argv[1]);
 
-    uint sum = 0;
-    uint best = 0;
-    uint num_wins = 0;
-
-    Strategy s;
-    if (depth > 0) {
-        s = make_ai(depth);
+    if (depth < 0) {
+        interactive();
     } else {
-        s = random_strategy;
-    }
+        uint sum = 0;
+        uint best = 0;
+        uint num_wins = 0;
 
-    auto results = gather_data(s);
-    print_statistics(results);
+        Strategy s;
+        if (depth > 0) {
+            s = make_ai(depth);
+        } else {
+            s = random_strategy;
+        }
+
+        auto results = gather_data(s);
+        print_statistics(results);
+    }
 
     return 0;
 }
