@@ -6,8 +6,10 @@
 
 
 #include "board.hpp"
-
 #include "reinforce.hpp"
+#include "mc_learner.hpp"
+#include "td_learner.hpp"
+
 
 using GameBoard = Board<4>;
 
@@ -193,7 +195,8 @@ void print_statistics(const std::vector<GameBoard> &results) {
 }
 
 void Usage() {
-    std::cerr << "Usage: ./ai2048 RL <num_trials>" << std::endl;
+    std::cerr << "Usage: ./ai2048 MC <num_trials>" << std::endl;
+    std::cerr << "Usage: ./ai2048 TD <num_trials>" << std::endl;
     std::cerr << "Usage: ./ai2048 MM <depth>" << std::endl;
     std::cerr << "Usage: ./ai2048 I" << std::endl;
 
@@ -212,8 +215,13 @@ void run_minimax(int depth) {
     print_statistics(results);
 }
 
-void run_reinforcement(int num_trials, double eps) {
+void run_mc_learner(int num_trials, double eps) {
     MCLearner<GameBoard> learner(eps);
+    driver(num_trials, learner);
+}
+
+void run_td_learner(int num_trials, double eps) {
+    TDLearner<GameBoard> learner(eps, 0.5);
     driver(num_trials, learner);
 }
 
@@ -224,11 +232,16 @@ int main(int argc, char *argv[]) {
     if (mode == "I") {
         interactive();
     } else {
-        if (mode == "RL") {
+        if (mode == "MC") {
             if (argc != 4) Usage();
             int trials = atoi(argv[2]);
             double eps = atoi(argv[3]);
-            run_reinforcement(trials, eps);
+            run_mc_learner(trials, eps);
+        } else if (mode == "TD") {
+            if (argc != 4) Usage();
+            int trials = atoi(argv[2]);
+            double eps = atoi(argv[3]);
+            run_td_learner(trials, eps);
         } else if (mode == "MM") {
             int depth = atoi(argv[2]);
             run_minimax(depth);
