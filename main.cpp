@@ -239,8 +239,8 @@ int main(int argc, char *argv[]) {
             run_mc_learner(trials, eps);
         } else if (mode == "TD") {
             if (argc != 4) Usage();
-            int trials = atoi(argv[2]);
-            double eps = atoi(argv[3]);
+            int trials = std::stoi(argv[2]);
+            double eps = std::stod(argv[3]);
             run_td_learner(trials, eps);
         } else if (mode == "MM") {
             int depth = atoi(argv[2]);
