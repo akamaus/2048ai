@@ -221,7 +221,7 @@ void run_mc_learner(int num_trials, double eps) {
 }
 
 void run_td_learner(int num_trials, double eps) {
-    TDLearner<GameBoard> learner(eps, 0.5);
+    TDLearner<GameBoard> learner(eps, 0.5, 0.9);
     driver(num_trials, learner);
 }
 
