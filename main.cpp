@@ -228,18 +228,38 @@ void run_td_learner(int num_trials, double eps) {
 }
 
 
+#include <fstream>
+#include <string>
+
 template <>
 void visualize_learner<TDLearner<TestPole>, TestPole>(const TDLearner<TestPole> &p, const TestPole &b) {
+    static int f_num;
+    f_num++;
+    std::ofstream f_q(std::string("plots/q_") + std::to_string(f_num) + ".mat");
+    std::ofstream f_p(std::string("plots/p_") + std::to_string(f_num) + ".mat");
+
     for (int y=1; y<=b.sy; y++) {
         for (int x=1; x<=b.sx; x++) {
             auto it = p.GetPolicy().find({x,y});
-            int t = 0;
+            int ti = 0;
+            double q = 0;
             if (it != p.GetPolicy().end()) {
-                t = (int)it->second;
+                Turn t = it->second;
+                ti = (int)t;
+                auto qit = p.ActValues().find({{x,y},t});
+                if (qit != p.ActValues().end()) {
+                    q = qit->second;
+                }
             }
-            std::cout << t << " ";
+            f_p << ti << " ";
+            if (q != 0) {
+                f_q << q << " ";
+            } else {
+                f_q << '?' << " ";
+            }
         }
-        std::cout << std::endl;
+        f_p << std::endl;
+        f_q << std::endl;
     }
 }
 

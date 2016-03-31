@@ -19,7 +19,7 @@ template <typename L>
 void driver(long num_episodes, L &player) {
     double avg_reward = 0;
 
-    for (int k=0; k < num_episodes; k++) { // episode
+    for (long k=0; k < num_episodes; k++) { // episode
         typename L::Board b;
         double reward = 0;
 
