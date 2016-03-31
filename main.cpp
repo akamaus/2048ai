@@ -9,6 +9,7 @@
 #include "reinforce.hpp"
 #include "mc_learner.hpp"
 #include "td_learner.hpp"
+#include "test_pole.hpp"
 
 
 using GameBoard = Board<4>;
@@ -216,14 +217,38 @@ void run_minimax(int depth) {
 }
 
 void run_mc_learner(int num_trials, double eps) {
-    MCLearner<GameBoard> learner(eps);
-    driver(num_trials, learner);
+//    MCLearner<GameBoard> learner(eps);
+//    driver(num_trials, learner);
 }
 
 void run_td_learner(int num_trials, double eps) {
-    TDLearner<GameBoard> learner(eps, 0.5, 0.9);
+    // std::cout << "EPS" << eps << endl;
+    // TDLearner<GameBoard> learner(eps, 0.5, 0.9);
+    // driver(num_trials, learner);
+}
+
+
+template <>
+void visualize_learner<TDLearner<TestPole>, TestPole>(const TDLearner<TestPole> &p, const TestPole &b) {
+    for (int y=1; y<=b.sy; y++) {
+        for (int x=1; x<=b.sx; x++) {
+            auto it = p.GetPolicy().find({x,y});
+            int t = 0;
+            if (it != p.GetPolicy().end()) {
+                t = (int)it->second;
+            }
+            std::cout << t << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
+
+void test_td_learner(int num_trials, double eps, double alpha, double gamma) {
+    TDLearner<TestPole> learner(eps, alpha, gamma);
     driver(num_trials, learner);
 }
+
 
 int main(int argc, char *argv[]) {
     if (argc < 2) Usage();
@@ -242,6 +267,13 @@ int main(int argc, char *argv[]) {
             int trials = std::stoi(argv[2]);
             double eps = std::stod(argv[3]);
             run_td_learner(trials, eps);
+        } else if (mode == "TST") {
+            if (argc != 6) Usage();
+            int trials = std::stoi(argv[2]);
+            double eps = std::stod(argv[3]);
+            double alpha = std::stod(argv[4]);
+            double gamma = std::stod(argv[5]);
+            test_td_learner(trials, eps, alpha, gamma);
         } else if (mode == "MM") {
             int depth = atoi(argv[2]);
             run_minimax(depth);

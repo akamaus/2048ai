@@ -60,7 +60,7 @@ private:
             double best = -1e6;
             A best_a;
             bool found=false;
-            for (A a: B::GetTurns()) {
+            for (A a: GetTurns<A>()) {
                 auto qq = qmap.find({prev_sa.first, a});
                 if (qq != qmap.end()) {
                     double v= qq->second;
@@ -71,11 +71,11 @@ private:
                     }
                 }
             }
-//                board.Print();
-//                std::cout << "step=" << board.GetTurn() <<  "; prev_q=" << prev_q << "; new_q=" << new_q <<
-//                    "; bst=" << best << "; bst_a=" << (int)best_a << std::endl;
-
             assert(found);
+//            std::cout <<"st" << std::hex << prev_sa.first << std::dec <<"; prev_q=" << prev_q << "; new_q=" << new_q <<
+//                "; bst=" << best << "; bst_a=" << (int)best_a << std::endl;
+
+            std::cout << "[" << prev_sa.first.first << ";" << prev_sa.first.second << "->" << (int)best_a << "]" << std::endl;
             this->pmap[prev_sa.first] = best_a;
         }
     }

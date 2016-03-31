@@ -17,13 +17,14 @@ public:
     A Sample(const B &b) {
         A a;
         const auto &p_act = pmap.find(b.Compress());
-
         if (p_act == pmap.end() || (rand() % (1 << 20)) < int_eps) {
-            auto n = B::GetTurns().size();
+            auto n = GetTurns<A>().size();
             int k = rand() % n;
-            a = B::GetTurns()[k];
+            a = GetTurns<A>()[k];
+//std::cout << "r=" << (int)a << endl;
         } else {
             a = p_act->second;
+//std::cout << "a=" << (int)a << endl;
             goto ret;
         }
     ret:

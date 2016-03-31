@@ -5,14 +5,22 @@
 #include <array>
 #include <iostream>
 #include <cassert>
+#include <vector>
 
 
+enum class Turn { Up = 1, Left = 2, Down = 3, Right = 4 };
+std::vector<Turn> all_turns = {Turn::Left, Turn::Right, Turn::Up, Turn::Down};
 
-enum class Turn { Left = 0, Right = 1, Up = 2, Down = 3 };
+template<typename T>
+std::vector<T> GetTurns();
+
+template<>
+std::vector<Turn> GetTurns<Turn>()
+{
+    return all_turns;
+}
 
 typedef uint8_t value;
-
-std::array<Turn,4> all_turns = {Turn::Left, Turn::Right, Turn::Up, Turn::Down};
 
 template <uint size>
 class Board {
@@ -31,10 +39,6 @@ public:
             res = (res << 4) | elt;
         }
         return res;
-    }
-
-    static const std::array<Turn,4> &GetTurns() {
-        return all_turns;
     }
 
     void Print() const {
@@ -152,6 +156,9 @@ public:
         Gen(nth);
         return true;
     }
+    bool EnvTurn() {
+        return RandomGen();
+    }
 
     uint NumFree() const {
         return _num_free;
@@ -167,6 +174,13 @@ public:
             }
         }
         return best;
+    }
+    bool IsTerminal(double &reward) const {
+        if (NumFree() == 0) {
+            reward += GetTurn();
+            return true;
+        }
+        return false;
     }
 
 private:

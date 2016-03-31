@@ -48,7 +48,7 @@ public:
             double best = -1e6;
             A best_a;
             bool found=false;
-            for (A a : B::GetTurns()) {
+            for (A a : GetTurns<A>()) {
                 auto q = qmap.find({sb, a});
                 if (q != qmap.end()) {
                     double v= q->second.Avg();
