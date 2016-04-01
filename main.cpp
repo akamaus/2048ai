@@ -251,7 +251,11 @@ void visualize_learner<TDLearner<TestPole>, TestPole>(const TDLearner<TestPole> 
                     q = qit->second;
                 }
             }
-            f_p << ti << " ";
+            if (ti != 0) {
+                f_p << ti << " ";
+            } else {
+                f_p << '?' << " ";
+            }
             if (q != 0) {
                 f_q << q << " ";
             } else {

@@ -10,7 +10,7 @@ public:
 
     TDLearner(double eps, double a, double g): Policy<B>(eps), Alpha(a), Gamma(g) {}
 
-    A Sample(const B &board) {
+    A Sample(const B &board, double rew = 0) {
         A act = Policy<B>::Sample(board);
         SA sa { board.Compress(), act };
 
@@ -20,7 +20,7 @@ public:
             if (it != qmap.end()) {
                 q = it->second;
             }
-            Backup(q, 0);
+            Backup(q, rew);
         } else {
             first = false;
 //            cout << "." << std::flush;
@@ -75,7 +75,7 @@ private:
 //            std::cout <<"st" << std::hex << prev_sa.first << std::dec <<"; prev_q=" << prev_q << "; new_q=" << new_q <<
 //                "; bst=" << best << "; bst_a=" << (int)best_a << std::endl;
 
-            std::cout << "[" << prev_sa.first.first << ";" << prev_sa.first.second << "->" << (int)best_a << "]" << std::endl;
+//            std::cout << "[" << prev_sa.first.first << ";" << prev_sa.first.second << "->" << (int)best_a << "(" << best << ")]" << std::endl;
             this->pmap[prev_sa.first] = best_a;
         }
     }
