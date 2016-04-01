@@ -21,25 +21,27 @@ void driver(long num_episodes, L &player) {
 
     for (long k=0; k < num_episodes; k++) { // episode
         typename L::Board b;
+        double total_reward = 0;
         double t_reward = 0;
-
         double s_reward = 0;
         while(!b.IsTerminal(t_reward)) {
             b.EnvTurn();
 
-            typename L::A act = player.Sample(b, s_reward);
+            typename L::A act = player.Sample(b);
 //            b.Print();
 //            std::cout << "act:" << (int)act << std::endl;
             s_reward = b.Move(act);
-//            t_reward += s_reward;
+            player.Reward(b, s_reward);
+            total_reward += s_reward;
         }
-        player.Reward(t_reward);
-        player.UpdatePolicy();
+        player.Reward(b, t_reward);
+        total_reward += t_reward;
+//        player.UpdatePolicy();
         visualize_learner(player, b);
 
-        avg_reward = avg_reward * 0.99 + t_reward * 0.01;
+        avg_reward = avg_reward * 0.99 + total_reward * 0.01;
 //        if (true || k % 100 == 0)
-            printf("n %lu q %lu, p %lu r %f ar %f\n", k, player.ActValues().size(), player.GetPolicy().size(), t_reward, avg_reward);
+            printf("n %lu q %lu, p %lu r %f ar %f\n", k, player.ActValues().size(), player.GetPolicy().size(), total_reward, avg_reward);
         fflush(stdout);
     }
 }

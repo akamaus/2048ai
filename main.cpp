@@ -7,8 +7,9 @@
 
 #include "board.hpp"
 #include "reinforce.hpp"
-#include "mc_learner.hpp"
-#include "td_learner.hpp"
+//#include "mc_learner.hpp"
+//#include "td_learner.hpp"
+#include "q_learner.hpp"
 #include "test_pole.hpp"
 
 
@@ -232,11 +233,12 @@ void run_td_learner(int num_trials, double eps) {
 #include <string>
 
 template <>
-void visualize_learner<TDLearner<TestPole>, TestPole>(const TDLearner<TestPole> &p, const TestPole &b) {
+void visualize_learner<QLearner<TestPole>, TestPole>(const QLearner<TestPole> &p, const TestPole &b) {
     static int f_num;
     f_num++;
     std::ofstream f_q(std::string("plots/q_") + std::to_string(f_num) + ".mat");
     std::ofstream f_p(std::string("plots/p_") + std::to_string(f_num) + ".mat");
+//    auto &f_q(std::cout);
 
     for (int y=1; y<=b.sy; y++) {
         for (int x=1; x<=b.sx; x++) {
@@ -268,8 +270,8 @@ void visualize_learner<TDLearner<TestPole>, TestPole>(const TDLearner<TestPole> 
 }
 
 
-void test_td_learner(int num_trials, double eps, double alpha, double gamma) {
-    TDLearner<TestPole> learner(eps, alpha, gamma);
+void test_learner(int num_trials, double eps, double alpha, double gamma) {
+    QLearner<TestPole> learner(eps, alpha, gamma);
     driver(num_trials, learner);
 }
 
@@ -297,7 +299,7 @@ int main(int argc, char *argv[]) {
             double eps = std::stod(argv[3]);
             double alpha = std::stod(argv[4]);
             double gamma = std::stod(argv[5]);
-            test_td_learner(trials, eps, alpha, gamma);
+            test_learner(trials, eps, alpha, gamma);
         } else if (mode == "MM") {
             int depth = atoi(argv[2]);
             run_minimax(depth);
