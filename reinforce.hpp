@@ -36,7 +36,7 @@ void driver(long num_episodes, L &player) {
 //        player.UpdatePolicy();
 
         avg_reward = avg_reward * 0.99 + total_reward * 0.01;
-        if (k % 50 == 0) {
+        if (k % 5 == 0) {
             printf("n %lu q %lu, p %lu r %f ar %f\n", k, player.ActValues().size(), player.GetPolicy().size(), total_reward, avg_reward);
             visualize_learner(player, b);
         }

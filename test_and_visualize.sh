@@ -7,7 +7,7 @@ rm -rf plots
 mkdir plots
 
 # len eps alpha gamma
-./ai2048 TST_SARSA $1 $2 $3 $4 | tee game_log.txt
+./ai2048 TST_SARSA $* | tee game_log.txt
 
 gnuplot -p  visualize.gnuplot &
 

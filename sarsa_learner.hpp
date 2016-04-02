@@ -2,6 +2,8 @@
 
 #include "policy.hpp"
 
+const double EPSILON = 1e-3;
+
 template <typename B>
 class SarsaLearner: public Policy<B> {
 public:
@@ -10,7 +12,7 @@ public:
     using S = typename Policy<B>::S;
     using SA = typename Policy<B>::SA;
 
-    SarsaLearner(double eps, double a, double g): Policy<B>(eps), Alpha(a), Gamma(g), Lambda(0) {}
+    SarsaLearner(double eps, double a, double g, double l): Policy<B>(eps), Alpha(a), Gamma(g), Lambda(l) {}
 
     A Sample(const B &board, double rew = 0) {
         UpdatePolicy(board);
@@ -63,15 +65,16 @@ private:
         double delta = r + Gamma * q - prev_q;
         zmap[prev_sa] = zmap[prev_sa] + 1;
 
-        for (auto zpair : zmap) {
-            const SA &zsa = zpair.first;
-            const double z = zpair.second;
+        for (auto zit = zmap.begin(); zit != zmap.end();) {
+            const SA &zsa = zit->first;
+            const double z = zit->second;
             qmap[zsa] = qmap[zsa] + Alpha * z * delta;
             double new_z = Lambda * Gamma * z;
-            if (new_z > 0) {
-                zmap[zsa] = new_z;
+            if (new_z > EPSILON) {
+                zit->second = new_z;
+                zit++;
             } else {
-                zmap.erase(zsa);
+                zit = zmap.erase(zit);
             }
         }
     }

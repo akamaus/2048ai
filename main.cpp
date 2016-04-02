@@ -127,8 +127,6 @@ std::string print_turn(Turn t) {
     return "UNKNOWN";
 }
 
-const uint num_trials = 100;
-
 Strategy make_ai(uint depth) {
     Strategy s = [depth](const GameBoard &b0) {
         Turn best_turn = Turn::Left;
@@ -145,6 +143,8 @@ Strategy random_strategy = [](const GameBoard &b0) {
 };
 
 std::vector<GameBoard> gather_data(Strategy strat) {
+    const uint num_trials = 100;
+
     std::vector<GameBoard> results;
     for (uint i=0; i< num_trials; i++) {
         GameBoard b;
@@ -197,6 +197,7 @@ void print_statistics(const std::vector<GameBoard> &results) {
 }
 
 void Usage() {
+    std::cerr << "Usage: ./ai2048 TST_SARSA <num_trials> <eps> <alpha> <gamma> <lambda>" << std::endl;
     std::cerr << "Usage: ./ai2048 MC <num_trials>" << std::endl;
     std::cerr << "Usage: ./ai2048 TD <num_trials>" << std::endl;
     std::cerr << "Usage: ./ai2048 MM <depth>" << std::endl;
@@ -312,11 +313,6 @@ void test_q_learner(int num_trials, double eps, double alpha, double gamma) {
 //    driver(num_trials, learner);
 }
 
-void test_sarsa_learner(int num_trials, double eps, double alpha, double gamma) {
-    SarsaLearner<TestPole> learner(eps, alpha, gamma);
-    driver(num_trials, learner);
-}
-
 int main(int argc, char *argv[]) {
     if (argc < 2) Usage();
 
@@ -342,12 +338,15 @@ int main(int argc, char *argv[]) {
             double gamma = std::stod(argv[5]);
             test_q_learner(trials, eps, alpha, gamma);
         } else if (mode == "TST_SARSA") {
-            if (argc != 6) Usage();
+            if (argc != 7) Usage();
             int trials = std::stoi(argv[2]);
             double eps = std::stod(argv[3]);
             double alpha = std::stod(argv[4]);
             double gamma = std::stod(argv[5]);
-            test_sarsa_learner(trials, eps, alpha, gamma);
+            double lambda = std::stod(argv[6]);
+
+            SarsaLearner<TestPole> learner(eps, alpha, gamma, lambda);
+            driver(trials, learner);
         } else if (mode == "MM") {
             int depth = atoi(argv[2]);
             run_minimax(depth);
