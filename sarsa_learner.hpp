@@ -1,14 +1,16 @@
 #pragma once
 
+#include "policy.hpp"
+
 template <typename B>
-class TDLearner: public Policy<B> {
+class SarsaLearner: public Policy<B> {
 public:
     using A = typename Policy<B>::A;
     using Board = B;
     using S = typename Policy<B>::S;
     using SA = typename Policy<B>::SA;
 
-    TDLearner(double eps, double a, double g): Policy<B>(eps), Alpha(a), Gamma(g) {}
+    SarsaLearner(double eps, double a, double g): Policy<B>(eps), Alpha(a), Gamma(g) {}
 
     A Sample(const B &board, double rew = 0) {
         A act = Policy<B>::Sample(board);
@@ -57,7 +59,7 @@ private:
         if (new_q != prev_q) {
             qmap[prev_sa] = new_q;
 
-            double best = -1e6;
+            double best = -1e9;
             A best_a;
             bool found=false;
             for (A a: GetTurns<A>()) {

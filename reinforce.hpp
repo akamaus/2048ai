@@ -27,14 +27,11 @@ void driver(long num_episodes, L &player) {
         while(!b.IsTerminal(t_reward)) {
             b.EnvTurn();
 
-            typename L::A act = player.Sample(b);
-//            b.Print();
-//            std::cout << "act:" << (int)act << std::endl;
+            typename L::A act = player.Sample(b, s_reward);
             s_reward = b.Move(act);
-            player.Reward(b, s_reward);
             total_reward += s_reward;
         }
-        player.Reward(b, t_reward);
+        player.Reward(t_reward);
         total_reward += t_reward;
 //        player.UpdatePolicy();
 

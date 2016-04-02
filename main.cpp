@@ -8,7 +8,7 @@
 #include "board.hpp"
 #include "reinforce.hpp"
 //#include "mc_learner.hpp"
-//#include "td_learner.hpp"
+#include "sarsa_learner.hpp"
 #include "q_learner.hpp"
 #include "test_pole.hpp"
 
@@ -269,12 +269,53 @@ void visualize_learner<QLearner<TestPole>, TestPole>(const QLearner<TestPole> &p
     }
 }
 
+template <>
+void visualize_learner<SarsaLearner<TestPole>, TestPole>(const SarsaLearner<TestPole> &p, const TestPole &b) {
+    static int f_num;
+    f_num++;
+    std::ofstream f_q(std::string("plots/q_") + std::to_string(f_num) + ".mat");
+    std::ofstream f_p(std::string("plots/p_") + std::to_string(f_num) + ".mat");
+//    auto &f_q(std::cout);
 
-void test_learner(int num_trials, double eps, double alpha, double gamma) {
-    QLearner<TestPole> learner(eps, alpha, gamma);
-    driver(num_trials, learner);
+    for (int y=1; y<=b.sy; y++) {
+        for (int x=1; x<=b.sx; x++) {
+            auto it = p.GetPolicy().find({x,y});
+            int ti = 0;
+            double q = 0;
+            if (it != p.GetPolicy().end()) {
+                Turn t = it->second;
+                ti = (int)t;
+                auto qit = p.ActValues().find({{x,y},t});
+                if (qit != p.ActValues().end()) {
+                    q = qit->second;
+                }
+            }
+            if (ti != 0) {
+                f_p << ti << " ";
+            } else {
+                f_p << '?' << " ";
+            }
+            if (q != 0) {
+                f_q << q << " ";
+            } else {
+                f_q << '?' << " ";
+            }
+        }
+        f_p << std::endl;
+        f_q << std::endl;
+    }
 }
 
+
+void test_q_learner(int num_trials, double eps, double alpha, double gamma) {
+//    QLearner<TestPole> learner(eps, alpha, gamma);
+//    driver(num_trials, learner);
+}
+
+void test_sarsa_learner(int num_trials, double eps, double alpha, double gamma) {
+    SarsaLearner<TestPole> learner(eps, alpha, gamma);
+    driver(num_trials, learner);
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) Usage();
@@ -293,13 +334,20 @@ int main(int argc, char *argv[]) {
             int trials = std::stoi(argv[2]);
             double eps = std::stod(argv[3]);
             run_td_learner(trials, eps);
-        } else if (mode == "TST") {
+        } else if (mode == "TST_Q") {
             if (argc != 6) Usage();
             int trials = std::stoi(argv[2]);
             double eps = std::stod(argv[3]);
             double alpha = std::stod(argv[4]);
             double gamma = std::stod(argv[5]);
-            test_learner(trials, eps, alpha, gamma);
+            test_q_learner(trials, eps, alpha, gamma);
+        } else if (mode == "TST_SARSA") {
+            if (argc != 6) Usage();
+            int trials = std::stoi(argv[2]);
+            double eps = std::stod(argv[3]);
+            double alpha = std::stod(argv[4]);
+            double gamma = std::stod(argv[5]);
+            test_sarsa_learner(trials, eps, alpha, gamma);
         } else if (mode == "MM") {
             int depth = atoi(argv[2]);
             run_minimax(depth);
