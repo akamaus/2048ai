@@ -10,37 +10,30 @@ public:
     using S = typename Policy<B>::S;
     using SA = typename Policy<B>::SA;
 
-    SarsaLearner(double eps, double a, double g): Policy<B>(eps), Alpha(a), Gamma(g) {}
+    SarsaLearner(double eps, double a, double g): Policy<B>(eps), Alpha(a), Gamma(g), Lambda(0) {}
 
     A Sample(const B &board, double rew = 0) {
+        UpdatePolicy(board);
         A act = Policy<B>::Sample(board);
-        SA sa { board.Compress(), act };
+        SA sa = {board.Compress(), act};
 
         if (!first) {
-            const auto &it = qmap.find(sa);
-            double q = 0;
-            if (it != qmap.end()) {
-                q = it->second;
-            }
+            double q = qmap[sa];
             Backup(q, rew);
         } else {
             first = false;
-//            cout << "." << std::flush;
         }
 
         prev_sa = sa;
         return act;
     }
 
-    void Reward(double rew) {
+    void TerminalReward(double rew) {
         if (!first) {
             Backup(0, rew);
         }
         first = true;
-    }
-
-    void UpdatePolicy() {
-        // proceeds inline in Sample()
+        zmap.clear();
     }
 
     using QMap = std::unordered_map<SA, double>;
@@ -48,46 +41,49 @@ public:
         return qmap;
     }
 private:
-    void Backup(double q, double r) {
-        const auto &prev_it = qmap.find(prev_sa);
-        double prev_q = 0;
-        if (prev_it != qmap.end()) {
-            prev_q = prev_it->second;
-        }
-        double new_q = prev_q + Alpha * (r + Gamma * q - prev_q);
 
-        if (new_q != prev_q) {
-            qmap[prev_sa] = new_q;
+    void UpdatePolicy(const Board &b) {
+        S s = b.Compress();
 
-            double best = -1e9;
-            A best_a;
-            bool found=false;
-            for (A a: GetTurns<A>()) {
-                auto qq = qmap.find({prev_sa.first, a});
-                if (qq != qmap.end()) {
-                    double v= qq->second;
-                    if (v > best) {
-                        best_a = a;
-                        best = v;
-                        found = true;
-                    }
-                }
+        double best = -1e9;
+        A best_a;
+        for (A a: GetTurns<A>()) {
+            double v = qmap[{s,a}];
+            if (v > best) {
+                best_a = a;
+                best = v;
             }
-            assert(found);
-//            std::cout <<"st" << std::hex << prev_sa.first << std::dec <<"; prev_q=" << prev_q << "; new_q=" << new_q <<
-//                "; bst=" << best << "; bst_a=" << (int)best_a << std::endl;
+        }
+        this->pmap[s] = best_a;
+    }
 
-//            std::cout << "[" << prev_sa.first.first << ";" << prev_sa.first.second << "->" << (int)best_a << "(" << best << ")]" << std::endl;
-            this->pmap[prev_sa.first] = best_a;
+    void Backup(double q, double r) {
+        double prev_q = qmap[prev_sa];
+
+        double delta = r + Gamma * q - prev_q;
+        zmap[prev_sa] = zmap[prev_sa] + 1;
+
+        for (auto zpair : zmap) {
+            const SA &zsa = zpair.first;
+            const double z = zpair.second;
+            qmap[zsa] = qmap[zsa] + Alpha * z * delta;
+            double new_z = Lambda * Gamma * z;
+            if (new_z > 0) {
+                zmap[zsa] = new_z;
+            } else {
+                zmap.erase(zsa);
+            }
         }
     }
 
-    const double Alpha;
-    const double Gamma;
+    const double Alpha; // backup speed
+    const double Gamma; // discount coefficient
+    const double Lambda; // Lambda in Sarsa(L)
 
     bool first = true;
     SA prev_sa;
     double prev_reward;
 ;
-    QMap qmap;
+    QMap qmap; // action-value
+    QMap zmap; // eligibility
 };

@@ -31,7 +31,7 @@ void driver(long num_episodes, L &player) {
             s_reward = b.Move(act);
             total_reward += s_reward;
         }
-        player.Reward(t_reward);
+        player.TerminalReward(s_reward + t_reward);
         total_reward += t_reward;
 //        player.UpdatePolicy();
 
