@@ -59,6 +59,7 @@ public:
         cout << "<" << c.first << ";" << c.second << ">";
     }
 
+    uint BestTile() { return -1; };
     const int sx, sy;
 
 private:

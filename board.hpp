@@ -178,6 +178,7 @@ public:
     bool IsTerminal(double &reward) const {
         if (NumFree() == 0) {
             reward += GetTurn();
+            reward = 0;
             return true;
         }
         return false;

@@ -13,7 +13,7 @@
 #include "test_pole.hpp"
 
 
-using GameBoard = Board<4>;
+using GameBoard = Board<3>;
 
 using MoveAnalysis = std::tuple<Turn, double>;
 using Strategy = std::function<Turn(const GameBoard &)>;
@@ -223,13 +223,6 @@ void run_mc_learner(int num_trials, double eps) {
 //    driver(num_trials, learner);
 }
 
-void run_td_learner(int num_trials, double eps) {
-    // std::cout << "EPS" << eps << endl;
-    // TDLearner<GameBoard> learner(eps, 0.5, 0.9);
-    // driver(num_trials, learner);
-}
-
-
 #include <fstream>
 #include <string>
 
@@ -307,6 +300,9 @@ void visualize_learner<SarsaLearner<TestPole>, TestPole>(const SarsaLearner<Test
     }
 }
 
+template <>
+void visualize_learner<SarsaLearner<GameBoard>, GameBoard>(const SarsaLearner<GameBoard> &p, const GameBoard &b) {}
+
 
 void test_q_learner(int num_trials, double eps, double alpha, double gamma) {
 //    QLearner<TestPole> learner(eps, alpha, gamma);
@@ -325,11 +321,15 @@ int main(int argc, char *argv[]) {
             int trials = atoi(argv[2]);
             double eps = atoi(argv[3]);
             run_mc_learner(trials, eps);
-        } else if (mode == "TD") {
-            if (argc != 4) Usage();
+        } else if (mode == "SARSA") {
+            if (argc != 7) Usage();
             int trials = std::stoi(argv[2]);
             double eps = std::stod(argv[3]);
-            run_td_learner(trials, eps);
+            double alpha = std::stod(argv[4]);
+            double gamma = std::stod(argv[5]);
+            double lambda = std::stod(argv[6]);
+            SarsaLearner<GameBoard> learner(eps, alpha, gamma, lambda);
+            driver(trials, learner);
         } else if (mode == "TST_Q") {
             if (argc != 6) Usage();
             int trials = std::stoi(argv[2]);
