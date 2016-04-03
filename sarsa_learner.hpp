@@ -63,14 +63,15 @@ private:
         double prev_q = qmap[prev_sa];
 
         double delta = r + Gamma * q - prev_q;
-        zmap[prev_sa] = zmap[prev_sa] + 1;
+        zmap[prev_sa] = 1;
 
         for (auto zit = zmap.begin(); zit != zmap.end();) {
             const SA &zsa = zit->first;
             const double z = zit->second;
             qmap[zsa] = qmap[zsa] + Alpha * z * delta;
             double new_z = Lambda * Gamma * z;
-            if (new_z > EPSILON) {
+            if (new_z > EPSILON &&
+                !(zsa.first == prev_sa.first && zsa.second != prev_sa.second)) { // replacing traces
                 zit->second = new_z;
                 zit++;
             } else {
