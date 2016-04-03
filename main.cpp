@@ -198,8 +198,8 @@ void print_statistics(const std::vector<GameBoard> &results) {
 
 void Usage() {
     std::cerr << "Usage: ./ai2048 TST_SARSA <num_trials> <eps> <alpha> <gamma> <lambda>" << std::endl;
+    std::cerr << "Usage: ./ai2048 SARSA <num_trials> <eps> <alpha> <gamma> <lambda>" << std::endl;
     std::cerr << "Usage: ./ai2048 MC <num_trials>" << std::endl;
-    std::cerr << "Usage: ./ai2048 TD <num_trials>" << std::endl;
     std::cerr << "Usage: ./ai2048 MM <depth>" << std::endl;
     std::cerr << "Usage: ./ai2048 I" << std::endl;
 
