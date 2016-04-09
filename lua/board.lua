@@ -41,12 +41,15 @@ local cmt = {
    end
 }
 
+local c_d = ffi.new("double[1]")
+
 local mt = {
    __index = {
       Print = function(b) B.board_print(b) end,
       RandomGen = function(b) return B.board_random_gen(b) end,
       Move = function(b,d) return B.board_move(b, d) end,
-      Compress = function(b) local res = {B.board_compress(b)} ; setmetatable(res, cmt); return res end
+      Compress = function(b) local res = {B.board_compress(b)} ; setmetatable(res, cmt); return res end,
+      IsTerminal = function(b) return B.board_is_terminal(b, c_d), tonumber(c_d[0]) end
    }
 }
 
