@@ -12,6 +12,7 @@ ffi.cdef [[
     typedef enum turn { Up = 1, Left = 2, Down = 3, Right = 4 } turn;
 
     board *board_new();
+    void board_copy(board *b_dst, const board *b_src);
     void board_print(const board *b);
     bool board_move(board *b, turn t);
     bool board_random_gen(board *b);
@@ -41,7 +42,6 @@ local cmt = {
    end,
    __index = {
       at = function(c,k)
-         print(k)
          assert(k > 0)
          assert(k <= M.S*M.S)
          local res = bit.band(bit.rshift(c[1], 60 - (k-1)*4), 0xf)
@@ -65,6 +65,8 @@ local mt = {
 local Board = ffi.metatype("board", mt)
 
 M.new = B.board_new
+M.copy = B.board_copy
+
 M.Up = C.Up
 M.Down = C.Down
 M.Left = C.Left
