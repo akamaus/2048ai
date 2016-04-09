@@ -38,7 +38,16 @@ local cmt = {
          s = s .. "\n"
       end
       return s
-   end
+   end,
+   __index = {
+      at = function(c,k)
+         print(k)
+         assert(k > 0)
+         assert(k <= M.S*M.S)
+         local res = bit.band(bit.rshift(c[1], 60 - (k-1)*4), 0xf)
+         return tonumber(res)
+      end
+}
 }
 
 local c_d = ffi.new("double[1]")
