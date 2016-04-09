@@ -28,6 +28,17 @@ class Board {
 public:
     Board(): _board{0}, _board_merges{0}, _num_free(size*size), _cur_turn{0} {}
 
+    void Reinit() {
+        for (auto &c : _board) {
+            c = 0;
+        }
+        for (auto &e : _board_merges) {
+            e = 0;
+        }
+        _num_free = size*size;
+        _cur_turn = 0;
+    }
+
     using BoardT = std::array<value, size*size>;
     using Action = Turn;
     using Compressed = unsigned long;
