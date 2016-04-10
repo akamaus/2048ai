@@ -102,7 +102,7 @@ local out_t = torch.Tensor(1)
 
 -- policy based on NN decision
 function nn_policy(net, b)
-   if math.random() < 0.002 then
+   if math.random() < 0.001 then
       return math.random(1,4),0
    end
 
@@ -121,8 +121,10 @@ end
 
 local F_print = 100
 local F_draw = 500
-local F_est = 2000
+local F_est = 5000
 local F_save = 1000
+
+local LRate = 0.0002
 
 function learn_policy(container)
    local net = container.net
@@ -159,7 +161,7 @@ function learn_policy(container)
 
       avg_val = avg_val * Tau + (1-Tau) * #states
 
-      net:updateParameters(0.0001 / avg_val)
+      net:updateParameters(LRate / avg_val)
 
       container.log_val[i] = avg_val
 
@@ -168,7 +170,9 @@ function learn_policy(container)
       end
 
       if i % F_draw == 0 then
-         P.plot_table(preds)
+         P.with_multiplot(1,2,
+                          { function () P.plot_table(preds) end,
+                             function () P.plot_tensors(container.log_val:narrow(1,1,i)) end } )
       end
 
       if i % F_est == 0 then
