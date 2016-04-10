@@ -72,9 +72,11 @@ local NN = require 'nn'
 -- build Torch-NN network
 function build_net(w)
    local net = NN.Sequential()
-   net:add(nn.Linear(Cells * CellVars,1))
---   net:add(nn.Tanh())
---   net:add(nn.Linear(w,1))
+   net:add(nn.Linear(Cells * CellVars,w))
+   net:add(nn.Tanh())
+   net:add(nn.Linear(w,1))
+
+   net.name = string.format("layer%d_%d", Cells * CellVars, w)
 
    return net
 end
@@ -100,6 +102,10 @@ local out_t = torch.Tensor(1)
 
 -- policy based on NN decision
 function nn_policy(net, b)
+   if math.random() < 0.002 then
+      return math.random(1,4),0
+   end
+
    local b_tst = Board.new()
    function try_move(m)
       Board.copy(b_tst, b)
@@ -116,13 +122,11 @@ end
 local F_print = 100
 local F_draw = 500
 local F_est = 2000
+local F_save = 1000
 
-function learn_policy(N, net)
-   local log_val = torch.Tensor(N):zero()
-   local log_err = torch.Tensor(N):zero()
-
-   local avg_val = 0
-   local avg_err = 0
+function learn_policy(container)
+   local net = container.net
+   local avg_val = container.avg_val
 
    local Tau = 0.99
 
@@ -132,7 +136,9 @@ function learn_policy(N, net)
       return nn_policy(net, b)
    end
 
-   for i=1,N do
+   while container.i <= container.N do
+      local i = container.i
+
       local b = Board.new()
       local states = gen_episode(b, nn_pol )
 
@@ -148,27 +154,16 @@ function learn_policy(N, net)
          mse = mse + (v[1] - out_t[1])*(v[1] - out_t[1])
          preds[#preds + 1] = v[1]
 
-         if i % F_print == 0 then
-            io.write(string.format("%0.2f ", v[1]))
-         end
-
-         if (si == 100) then
-            break
-         end
---         print("best_move,best_val", best_move, best_val)
       end
-      net:updateParameters(0.0001)
-
       local err = mse / #states
 
       avg_val = avg_val * Tau + (1-Tau) * #states
-      avg_err = avg_err * Tau + (1-Tau) * err
 
-      log_val[i] = avg_val
-      log_err[i] = avg_err
+      net:updateParameters(0.0001 / avg_val)
+
+      container.log_val[i] = avg_val
 
       if i % F_print == 0 then
-         print()
          print("K", i, "avg val", avg_val, "val", #states, "err", mse / #states)
       end
 
@@ -180,10 +175,17 @@ function learn_policy(N, net)
          sample_episodes(1000, nn_pol)
       end
 
---      io.read "*line"
+      container.i = container.i + 1
+
+      if i % F_save == 0 then
+         local path = string.format("checkpoints/nn_%s_iter%d_avg%0.2f.sav", net.name, i, avg_val)
+         container.avg_val = avg_val
+         torch.save(path, container)
+         print("saved " .. path)
+      end
    end
 
-   P.plot_tensors(log_err, log_val)
+   P.plot_tensors(container.log_val)
    --   print("avg", table.fold(tab, function(a,b) return a+b end) / N)
    --   GP.hist(torch.Tensor(tab))
 end
@@ -204,16 +206,29 @@ function interactive()
    until stop
 end
 
+function build_container(N,w)
+   local c = {
+      N = N,
+      i = 1,
+      net = build_net(w),
+      log_val = torch.Tensor(N):zero(),
+      avg_val = 0
+   }
+
+   return c
+end
+
+local N = 500000
+
+local cont
+if #arg == 0 then
+   cont = build_container(N, 100)
+else
+   cont = torch.load(arg[1])
+end
+
+learn_policy(cont)
+
 --interactive()
-
-local N = 100000
-local net = build_net(10)
-
-learn_policy(N, net)
-
-
-
---GP.imagesc(t)
+--local net = build_net(100)
 --sample_episodes(N, function() return math.random(4) end)
-
-
