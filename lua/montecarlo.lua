@@ -28,6 +28,11 @@ function find_max(k1, k2, f)
    return best_k, best
 end
 
+function sleep(s)
+  local ntime = os.time() + s
+  repeat until os.time() > ntime
+end
+
 -- Generate single episode on board b using policy
 function gen_episode(b, policy)
    local states = {}
@@ -67,7 +72,10 @@ local NN = require 'nn'
 -- build Torch-NN network
 function build_net(w)
    local net = NN.Sequential()
-   net:add(nn.Linear(Cells * CellVars,1))
+   net:add(nn.Linear(Cells * CellVars,w))
+   net:add(nn.Tanh())
+   net:add(nn.Linear(w,1))
+
    return net
 end
 
@@ -105,7 +113,6 @@ function nn_policy(b, net)
    return best_move
 end
 
-
 function learn_policy(N, net)
    local log_val = torch.Tensor(N):zero()
    local log_err = torch.Tensor(N):zero()
@@ -125,19 +132,24 @@ function learn_policy(N, net)
 
       net:zeroGradParameters()
       local mse = 0
-      for i,st in ipairs(states) do
-         out_t[1] = #states - i
+      for si,st in ipairs(states) do
+         out_t[1] = #states - si
          encode_state(in_t, st)
          local v = net:forward(in_t)
          net:backward(in_t, cr:backward(v, out_t))
          mse = mse + (v[1] - out_t[1])*(v[1] - out_t[1])
          preds[#preds + 1] = v[1]
-         io.write(string.format("%0.2f ", v[1]))
 
---         break
+         if i % 10 == 0 then
+            io.write(string.format("%0.2f ", v[1]))
+         end
+
+         if (si == 10) then
+            break
+         end
 --         print("best_move,best_val", best_move, best_val)
       end
-      net:updateParameters(0.01)
+      net:updateParameters(0.0005)
 
       local err = mse / #states
 
@@ -146,10 +158,16 @@ function learn_policy(N, net)
 
       log_val[i] = avg_val
       log_err[i] = avg_err
-      print("val", #states, "err", mse / #states)
-      P.plot_table(preds)
 
-      io.read "*line"
+      if i % 10 == 0 then
+         print("val", #states, "err", mse / #states)
+      end
+
+      if i % 500 == 0 then
+         P.plot_table(preds)
+      end
+
+--      io.read "*line"
    end
 
    P.plot_tensors(log_err, log_val)
@@ -176,7 +194,7 @@ end
 --interactive()
 
 local N = 5000
-local net = build_net()
+local net = build_net(10)
 
 learn_policy(N, net)
 
