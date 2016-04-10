@@ -121,16 +121,24 @@ function learn_policy(N, net)
       local b = Board.new()
       local states = gen_episode(b, function(b) return nn_policy(b, net) end)
 
+      local preds = {}
+
       net:zeroGradParameters()
       local mse = 0
       for i,st in ipairs(states) do
          out_t[1] = #states - i
          encode_state(in_t, st)
          local v = net:forward(in_t)
-         net:backward(in_t, cr:backward(net.output, v))
+         net:backward(in_t, cr:backward(v, out_t))
          mse = mse + (v[1] - out_t[1])*(v[1] - out_t[1])
+         preds[#preds + 1] = v[1]
+         io.write(string.format("%0.2f ", v[1]))
+
+--         break
 --         print("best_move,best_val", best_move, best_val)
       end
+      net:updateParameters(0.01)
+
       local err = mse / #states
 
       avg_val = avg_val * Tau + (1-Tau) * #states
@@ -139,6 +147,9 @@ function learn_policy(N, net)
       log_val[i] = avg_val
       log_err[i] = avg_err
       print("val", #states, "err", mse / #states)
+      P.plot_table(preds)
+
+      io.read "*line"
    end
 
    P.plot_tensors(log_err, log_val)
@@ -146,9 +157,7 @@ function learn_policy(N, net)
    --   GP.hist(torch.Tensor(tab))
 end
 
-
---learn_policy(N, net)
-
+-- interactive play, draws encoding
 function interactive()
    local b = Board.new()
    local stop = false
@@ -164,10 +173,13 @@ function interactive()
    until stop
 end
 
-interactive()
+--interactive()
 
 local N = 5000
---local net = build_net()
+local net = build_net()
+
+learn_policy(N, net)
+
 
 
 --GP.imagesc(t)
