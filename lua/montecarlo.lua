@@ -99,7 +99,7 @@ local in_t = torch.Tensor(Cells * CellVars)
 local out_t = torch.Tensor(1)
 
 -- policy based on NN decision
-function nn_policy(b, net)
+function nn_policy(net, b)
    local b_tst = Board.new()
    function try_move(m)
       Board.copy(b_tst, b)
@@ -113,6 +113,10 @@ function nn_policy(b, net)
    return best_move
 end
 
+local F_print = 100
+local F_draw = 500
+local F_est = 2000
+
 function learn_policy(N, net)
    local log_val = torch.Tensor(N):zero()
    local log_err = torch.Tensor(N):zero()
@@ -124,9 +128,13 @@ function learn_policy(N, net)
 
    local cr = nn.MSECriterion()
 
+   function nn_pol(b)
+      return nn_policy(net, b)
+   end
+
    for i=1,N do
       local b = Board.new()
-      local states = gen_episode(b, function(b) return nn_policy(b, net) end)
+      local states = gen_episode(b, nn_pol )
 
       local preds = {}
 
@@ -134,13 +142,13 @@ function learn_policy(N, net)
       local mse = 0
       for si,st in ipairs(states) do
          out_t[1] = #states - si
-         encode_state(in_t, st)
+         encode_state(in_t, st, si)
          local v = net:forward(in_t)
          net:backward(in_t, cr:backward(v, out_t))
          mse = mse + (v[1] - out_t[1])*(v[1] - out_t[1])
          preds[#preds + 1] = v[1]
 
-         if i % 100 == 0 then
+         if i % F_print == 0 then
             io.write(string.format("%0.2f ", v[1]))
          end
 
@@ -159,12 +167,17 @@ function learn_policy(N, net)
       log_val[i] = avg_val
       log_err[i] = avg_err
 
-      if i % 100 == 0 then
-         print("avg val", avg_val, "val", #states, "err", mse / #states)
+      if i % F_print == 0 then
+         print()
+         print("K", i, "avg val", avg_val, "val", #states, "err", mse / #states)
       end
 
-      if i % 500 == 0 then
+      if i % F_draw == 0 then
          P.plot_table(preds)
+      end
+
+      if i % F_est == 0 then
+         sample_episodes(1000, nn_pol)
       end
 
 --      io.read "*line"
