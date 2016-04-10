@@ -72,9 +72,9 @@ local NN = require 'nn'
 -- build Torch-NN network
 function build_net(w)
    local net = NN.Sequential()
-   net:add(nn.Linear(Cells * CellVars,w))
-   net:add(nn.Tanh())
-   net:add(nn.Linear(w,1))
+   net:add(nn.Linear(Cells * CellVars,1))
+--   net:add(nn.Tanh())
+--   net:add(nn.Linear(w,1))
 
    return net
 end
@@ -140,16 +140,16 @@ function learn_policy(N, net)
          mse = mse + (v[1] - out_t[1])*(v[1] - out_t[1])
          preds[#preds + 1] = v[1]
 
-         if i % 10 == 0 then
+         if i % 100 == 0 then
             io.write(string.format("%0.2f ", v[1]))
          end
 
-         if (si == 10) then
+         if (si == 100) then
             break
          end
 --         print("best_move,best_val", best_move, best_val)
       end
-      net:updateParameters(0.0005)
+      net:updateParameters(0.0001)
 
       local err = mse / #states
 
@@ -159,8 +159,8 @@ function learn_policy(N, net)
       log_val[i] = avg_val
       log_err[i] = avg_err
 
-      if i % 10 == 0 then
-         print("val", #states, "err", mse / #states)
+      if i % 100 == 0 then
+         print("avg val", avg_val, "val", #states, "err", mse / #states)
       end
 
       if i % 500 == 0 then
@@ -193,7 +193,7 @@ end
 
 --interactive()
 
-local N = 5000
+local N = 100000
 local net = build_net(10)
 
 learn_policy(N, net)
