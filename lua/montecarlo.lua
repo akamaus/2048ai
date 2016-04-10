@@ -76,9 +76,15 @@ function encode_state(t, st)
    t:fill(0)
    for i=1,Cells do
       for j=1,st:at(i) do
-         t[(i-1) * Cells + j] = 1
+         t[(i-1) * CellVars + j] = 1
       end
    end
+end
+
+function draw_state(t, st)
+   encode_state(t, st)
+   local img = t:clone()
+   GP.imagesc(img:resize(Cells, CellVars))
 end
 
 local in_t = torch.Tensor(Cells * CellVars)
@@ -140,10 +146,28 @@ function learn_policy(N, net)
    --   GP.hist(torch.Tensor(tab))
 end
 
-local N = 5000
-local net = build_net()
 
-learn_policy(N, net)
+--learn_policy(N, net)
+
+function interactive()
+   local b = Board.new()
+   local stop = false
+
+   repeat
+      b:RandomGen()
+      b:Print()
+      draw_state(in_t, b:Compress())
+      local move = tonumber(io.read("*line"))
+      if (move) then
+         b:Move(move)
+      end
+   until stop
+end
+
+interactive()
+
+local N = 5000
+--local net = build_net()
 
 
 --GP.imagesc(t)

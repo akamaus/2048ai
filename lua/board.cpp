@@ -1,7 +1,7 @@
 #include "../board.hpp"
 
 extern "C" {
-    typedef Board<4> board;
+    typedef Board<3> board;
     enum turn { Up = 1, Left = 2, Down = 3, Right = 4 };
 
     board *board_new();

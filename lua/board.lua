@@ -1,6 +1,6 @@
 
 local M = {}
-M.S = 4
+M.S = 3
 
 local ffi = require 'ffi'
 
@@ -29,12 +29,11 @@ local B = ffi.load("board.so")
 local cmt = {
    __tostring = function(c)
       local s = ""
-      for i=0,M.S-1 do
-         for j=0,M.S-1 do
-            local b = c[1]
-            local k = i*M.S + j
-            local res = bit.band(bit.rshift(b, 60 - k*4), 0xf)
-            s = s .. tonumber(res)
+      for i=1,M.S do
+         for j=1,M.S do
+            local k = (i-1)*M.S + j
+            local res = c:at(k)
+            s = s .. tostring(res)
          end
          s = s .. "\n"
       end
@@ -44,7 +43,7 @@ local cmt = {
       at = function(c,k)
          assert(k > 0)
          assert(k <= M.S*M.S)
-         local res = bit.band(bit.rshift(c[1], 60 - (k-1)*4), 0xf)
+         local res = bit.band(bit.rshift(c[1], (M.S*M.S - k)*4) , 0xf)
          return tonumber(res)
       end
 }
@@ -54,11 +53,11 @@ local c_d = ffi.new("double[1]")
 
 local mt = {
    __index = {
-      Print = function(b) B.board_print(b) end,
-      RandomGen = function(b) return B.board_random_gen(b) end,
-      Move = function(b,d) return B.board_move(b, d) end,
-      Compress = function(b) local res = {B.board_compress(b)} ; setmetatable(res, cmt); return res end,
-      IsTerminal = function(b) return B.board_is_terminal(b, c_d), tonumber(c_d[0]) end
+      Print = function(b) B.board_print(assert(b)) end,
+      RandomGen = function(b) return B.board_random_gen(assert(b)) end,
+      Move = function(b,d) return B.board_move(assert(b), d) end,
+      Compress = function(b) local res = {B.board_compress(assert(b))} ; setmetatable(res, cmt); return res end,
+      IsTerminal = function(b) return B.board_is_terminal(assert(b), c_d), tonumber(c_d[0]) end
    }
 }
 
