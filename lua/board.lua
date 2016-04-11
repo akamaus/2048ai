@@ -12,6 +12,7 @@ ffi.cdef [[
     typedef enum turn { Up = 1, Left = 2, Down = 3, Right = 4 } turn;
 
     board *board_new();
+    void board_free(board *);
     void board_copy(board *b_dst, const board *b_src);
     void board_print(const board *b);
     bool board_move(board *b, turn t);
@@ -63,7 +64,7 @@ local mt = {
 
 local Board = ffi.metatype("board", mt)
 
-M.new = B.board_new
+M.new = function() return ffi.gc(B.board_new(), B.board_free) end
 M.copy = B.board_copy
 
 M.Up = C.Up
