@@ -70,13 +70,14 @@ local CellVars = 16 -- num of elem variants
 
 local NN = require 'nn'
 -- build Torch-NN network
-function build_net(w)
+function build_net(w, name)
+   name = name or ""
    local net = NN.Sequential()
-   net:add(nn.Linear(Cells * CellVars,w))
-   net:add(nn.Tanh())
-   net:add(nn.Linear(w,1))
+   net:add(nn.Linear(Cells * CellVars,1))
+--   net:add(nn.Tanh())
+--   net:add(nn.Linear(w,1))
 
-   net.name = string.format("layer%d_%d", Cells * CellVars, w)
+   net.name = string.format("%s_layer%d_%d", name, Cells * CellVars, 1)
 
    return net
 end
@@ -101,8 +102,8 @@ local in_t = torch.Tensor(Cells * CellVars)
 local out_t = torch.Tensor(1)
 
 -- policy based on NN decision
-function nn_policy(net, b)
-   if math.random() < 0.001 then
+function nn_policy(net, b, eps)
+   if math.random() < eps then
       return math.random(1,4),0
    end
 
@@ -125,6 +126,7 @@ local F_est = 5000
 local F_save = 1000
 
 local LRate = 0.0002
+local Eps = 0.001
 
 function learn_policy(container)
    local net = container.net
@@ -135,7 +137,7 @@ function learn_policy(container)
    local cr = nn.MSECriterion()
 
    function nn_pol(b)
-      return nn_policy(net, b)
+      return nn_policy(net, b, Eps)
    end
 
    while container.i <= container.N do
@@ -150,13 +152,14 @@ function learn_policy(container)
       local mse = 0
       for si,st in ipairs(states) do
          out_t[1] = #states - si
-         encode_state(in_t, st, si)
+         encode_state(in_t, st)
          local v = net:forward(in_t)
          net:backward(in_t, cr:backward(v, out_t))
          mse = mse + (v[1] - out_t[1])*(v[1] - out_t[1])
          preds[#preds + 1] = v[1]
 
       end
+
       local err = mse / #states
 
       avg_val = avg_val * Tau + (1-Tau) * #states
@@ -210,11 +213,11 @@ function interactive()
    until stop
 end
 
-function build_container(N,w)
+function build_container(N,w,name)
    local c = {
       N = N,
       i = 1,
-      net = build_net(w),
+      net = build_net(w,name),
       log_val = torch.Tensor(N):zero(),
       avg_val = 0
    }
@@ -222,16 +225,78 @@ function build_container(N,w)
    return c
 end
 
-local N = 500000
+--
+-- Analyzis
+--
 
-local cont
-if #arg == 0 then
-   cont = build_container(N, 100)
-else
-   cont = torch.load(arg[1])
+-- draw layer as it evolves through success checkpoints
+function draw_layer_evolution(checkpoints)
+   GP.raw('set cbrange [-40:40]')
+   GP.raw('set palette defined (-50 "blue", 0 "white", 50 "red")')
+
+   for i,f in ipairs(checkpoints) do
+      cont = torch.load(f)
+      GP.imagesc(cont.net.modules[1].weight:resize(Cells,CellVars), 'color')
+      sleep(1)
+   end
+--   io.read("*l")
 end
 
-learn_policy(cont)
+-- draw performance of multiple checkpoints on a single game
+function evaluate_checkpoints(files, seed)
+   local vals1 = {}
+   for i,f in ipairs(files) do
+      cont = torch.load(f)
+      b = Board.new()
+      Board.srand(seed)
+      local states1 = gen_episode(b, function(b)
+                              return nn_policy(cont.net, b, 0)
+                              end)
+      vals1[#vals1 + 1] = #states1
+   end
+   P.plot_table(vals1)
+end
+
+-- learn a number of networks
+function learn_series(N, seed_num)
+   for i=1, seed_num do
+      math.randomseed(0)
+      Board.srand(i)
+      cont = build_container(N, 100, "seed" .. i)
+      learn_policy(cont)
+   end
+end
+
+function draw_layer_variants(checkpoints)
+   GP.raw('set cbrange [-40:40]')
+   GP.raw('set palette defined (-50 "blue", 0 "white", 50 "red")')
+   GP.raw('unset xtics')
+
+   P.with_multiplot(3,3,
+                    function()
+                       for i,f in ipairs(checkpoints) do
+                          cont = torch.load(f)
+                          GP.imagesc(cont.net.modules[1].weight:resize(Cells,CellVars), 'color')
+                       end
+                    end
+   )
+end
+
+
+learn_series(tonumber(arg[1]), tonumber(arg[2]))
+
+--draw_layer_evolution(arg)
+--draw_layer_variants(arg)
+   
+--local N = 10000
+
+--
+
+--draw_layers(arg)
+
+--learn_policy(cont)
+
+
 
 --interactive()
 --local net = build_net(100)

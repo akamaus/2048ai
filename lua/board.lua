@@ -20,7 +20,7 @@ ffi.cdef [[
     bool board_is_terminal(const board *b, double *r);
     unsigned long board_compress(const board *b);
 
-
+    void srand(unsigned int seed);
 ]]
 
 local C = ffi.C
@@ -71,5 +71,7 @@ M.Up = C.Up
 M.Down = C.Down
 M.Left = C.Left
 M.Right = C.Right
+
+M.srand = function(s) C.srand(s) end
 
 return M

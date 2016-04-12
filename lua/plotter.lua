@@ -13,10 +13,16 @@ local function indexes(tab)
 end
 
 function M.with_multiplot(i,j, acts)
-   gp.raw(string.format("set terminal wxt size 1200,600; set multiplot layout %d,%d", i,j))
-
-   for _,a in pairs(acts) do
-      a()
+   gp.raw('set terminal wxt size 1200,600')
+   gp.raw(string.format('set multiplot layout %d,%d', i,j))
+   gp.raw('unset key')
+   if type(acts) == 'table' then
+      for _,a in pairs(acts) do
+         a()
+      end
+   elseif type(acts) == 'function' then
+      acts()
+   else error "pass function table or single function"
    end
 
    gp.raw("unset multiplot")
