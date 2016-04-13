@@ -98,11 +98,8 @@ function draw_state(t, st)
    GP.imagesc(img:resize(Cells, CellVars))
 end
 
-local in_t = torch.Tensor(Cells * CellVars)
-local out_t = torch.Tensor(1)
-
 -- policy based on NN decision
-function nn_policy(net, b, eps)
+function eps_greedy_policy(learner, eps, b)
    if math.random() < eps then
       return math.random(1,4),0
    end
@@ -111,9 +108,7 @@ function nn_policy(net, b, eps)
    function try_move(m)
       Board.copy(b_tst, b)
       b_tst:Move(m)
-      encode_state(in_t, b_tst:Compress())
-      local val = net:forward(in_t)
-      return val[1]
+      return learner:est_value(b_tst:Compress())
    end
 
    best_move, best_val = find_max(1,4, try_move)
@@ -129,44 +124,36 @@ local LRate = 0.0002
 local Eps = 0.001
 
 function learn_policy(container)
-   local net = container.net
+   local learner = container.learner
    local avg_val = container.avg_val
 
    local Tau = 0.99
 
-   local cr = nn.MSECriterion()
-
-   function nn_pol(b)
-      return nn_policy(net, b, Eps)
+   function pol(b)
+      return eps_greedy_policy(learner, Eps, b)
    end
 
    while container.i <= container.N do
       local i = container.i
 
       local b = Board.new()
-      local states = gen_episode(b, nn_pol )
+      local states = gen_episode(b, pol)
 
       local preds = {}
 
-      net:zeroGradParameters()
       local mse = 0
       for si,st in ipairs(states) do
-         out_t[1] = #states - si
-         encode_state(in_t, st)
-         local v = net:forward(in_t)
-         net:backward(in_t, cr:backward(v, out_t))
-         mse = mse + (v[1] - out_t[1])*(v[1] - out_t[1])
-         preds[#preds + 1] = v[1]
-
+         local val = #states - si
+         local err = learner:learn(st, val)
+         mse = mse + err*err
+         preds[#preds + 1] = val + err
       end
 
-      local err = mse / #states
-
       avg_val = avg_val * Tau + (1-Tau) * #states
-
-      net:updateParameters(LRate / avg_val)
-
+      learner:apply(LRate / avg_val)
       container.log_val[i] = avg_val
+
+      local err = mse / #states
 
       if i % F_print == 0 then
          print("K", i, "avg val", avg_val, "val", #states, "err", mse / #states)
@@ -179,13 +166,13 @@ function learn_policy(container)
       end
 
       if i % F_est == 0 then
-         sample_episodes(1000, nn_pol)
+         sample_episodes(1000, pol)
       end
 
       container.i = container.i + 1
 
       if i % F_save == 0 then
-         local path = string.format("checkpoints/nn_%s_iter%d_avg%0.2f.sav", net.name, i, avg_val)
+         local path = string.format("checkpoints/nn_%s_iter%d_avg%0.2f.sav", learner.name, i, avg_val)
          container.avg_val = avg_val
          torch.save(path, container)
          print("saved " .. path)
@@ -213,11 +200,49 @@ function interactive()
    until stop
 end
 
+function build_nn_learner(L, w, name)
+   local L = L or {
+      name = name,
+      net = build_net(w, name),
+      in_t = torch.Tensor(Cells * CellVars),
+      out_t = torch.Tensor(1),
+      cr = nn.MSECriterion()
+   }
+   L.net:zeroGradParameters()
+
+   local mt = {
+      __index = {
+         -- returns estimated value of a position
+         est_value = function(L, st)
+            encode_state(L.in_t, st)
+            local val = L.net:forward(L.in_t)
+            return val[1]
+         end,
+         -- learns true value and returns error
+         learn = function(L, st, val)
+            encode_state(L.in_t, st)
+            L.out_t[1] = val
+            local pred = L.net:forward(L.in_t)
+            L.net:backward(L.in_t, L.cr:backward(pred, L.out_t))
+            return pred[1] - val
+         end,
+         -- applies learned material
+         apply = function(L, rate)
+            L.net:updateParameters(rate)
+            L.net:zeroGradParameters()
+         end
+      }
+   }
+   setmetatable(L, mt)
+   return L
+end
+
+
 function build_container(N,w,name)
    local c = {
       N = N,
       i = 1,
-      net = build_net(w,name),
+      learner = build_nn_learner(w,name),
       log_val = torch.Tensor(N):zero(),
       avg_val = 0
    }
@@ -260,6 +285,7 @@ end
 -- learn a number of networks
 function learn_series(N, seed_num)
    for i=1, seed_num do
+      torch.manualSeed(1)
       math.randomseed(0)
       Board.srand(i)
       cont = build_container(N, 100, "seed" .. i)
@@ -283,11 +309,15 @@ function draw_layer_variants(checkpoints)
 end
 
 
-learn_series(tonumber(arg[1]), tonumber(arg[2]))
+--learn_series(tonumber(arg[1]), tonumber(arg[2]))
+
+cont = torch.load(arg[1])
+cont.learner = build_nn_learner(cont.learner)
+learn_policy(cont)
 
 --draw_layer_evolution(arg)
 --draw_layer_variants(arg)
-   
+
 --local N = 10000
 
 --
