@@ -5,6 +5,12 @@ local P = require 'plotter'
 
 local Board = require 'board'
 
+-- sleeps s seconds
+function sleep(s)
+  local ntime = os.time() + s
+  repeat until os.time() > ntime
+end
+
 -- folds table t using function f and start state s0
 function table.fold(t, f, s0)
    local s = s0 or 0
@@ -26,11 +32,6 @@ function find_max(k1, k2, f)
       end
    end
    return best_k, best
-end
-
-function sleep(s)
-  local ntime = os.time() + s
-  repeat until os.time() > ntime
 end
 
 -- Generate single episode on board b using policy
@@ -64,39 +65,6 @@ function sample_episodes(N, policy)
    GP.hist(torch.Tensor(tab))
 end
 
--- Neural network policy
-local Cells = Board.S * Board.S -- num of elems on board
-local CellVars = 16 -- num of elem variants
-
-local NN = require 'nn'
--- build Torch-NN network
-function build_net(w, name)
-   name = name or ""
-   local net = NN.Sequential()
-   net:add(nn.Linear(Cells * CellVars,1))
---   net:add(nn.Tanh())
---   net:add(nn.Linear(w,1))
-
-   net.name = string.format("%s_layer%d_%d", name, Cells * CellVars, 1)
-
-   return net
-end
-
--- write board state into Tensor
-function encode_state(t, st)
-   t:fill(0)
-   for i=1,Cells do
-      for j=1,st:at(i) do
-         t[(i-1) * CellVars + j] = 1
-      end
-   end
-end
-
-function draw_state(t, st)
-   encode_state(t, st)
-   local img = t:clone()
-   GP.imagesc(img:resize(Cells, CellVars))
-end
 
 -- policy based on NN decision
 function eps_greedy_policy(learner, eps, b)
@@ -115,12 +83,12 @@ function eps_greedy_policy(learner, eps, b)
    return best_move
 end
 
-local F_print = 100
-local F_draw = 500
-local F_est = 5000
-local F_save = 1000
+local F_print = 1000
+local F_draw = 10000
+local F_est = 50000
+local F_save = 1000000
 
-local LRate = 0.0002
+local LRate = 0.1
 local Eps = 0.001
 
 function learn_policy(container)
@@ -200,49 +168,11 @@ function interactive()
    until stop
 end
 
-function build_nn_learner(L, w, name)
-   local L = L or {
-      name = name,
-      net = build_net(w, name),
-      in_t = torch.Tensor(Cells * CellVars),
-      out_t = torch.Tensor(1),
-      cr = nn.MSECriterion()
-   }
-   L.net:zeroGradParameters()
-
-   local mt = {
-      __index = {
-         -- returns estimated value of a position
-         est_value = function(L, st)
-            encode_state(L.in_t, st)
-            local val = L.net:forward(L.in_t)
-            return val[1]
-         end,
-         -- learns true value and returns error
-         learn = function(L, st, val)
-            encode_state(L.in_t, st)
-            L.out_t[1] = val
-            local pred = L.net:forward(L.in_t)
-            L.net:backward(L.in_t, L.cr:backward(pred, L.out_t))
-            return pred[1] - val
-         end,
-         -- applies learned material
-         apply = function(L, rate)
-            L.net:updateParameters(rate)
-            L.net:zeroGradParameters()
-         end
-      }
-   }
-   setmetatable(L, mt)
-   return L
-end
-
-
-function build_container(N,w,name)
+function build_container(N, learner)
    local c = {
       N = N,
       i = 1,
-      learner = build_nn_learner(w,name),
+      learner = learner,
       log_val = torch.Tensor(N):zero(),
       avg_val = 0
    }
@@ -251,7 +181,7 @@ function build_container(N,w,name)
 end
 
 --
--- Analyzis
+-- Analysis
 --
 
 -- draw layer as it evolves through success checkpoints
@@ -308,12 +238,16 @@ function draw_layer_variants(checkpoints)
    )
 end
 
+local TL = require 'table_learner'
+
+local cont = build_container(tonumber(arg[2]), TL.build_table_learner(arg[1]))
+learn_policy(cont)
 
 --learn_series(tonumber(arg[1]), tonumber(arg[2]))
 
-cont = torch.load(arg[1])
-cont.learner = build_nn_learner(cont.learner)
-learn_policy(cont)
+--cont = torch.load(arg[1])
+--cont.learner = build_nn_learner(cont.learner)
+--learn_policy(cont)
 
 --draw_layer_evolution(arg)
 --draw_layer_variants(arg)
@@ -324,10 +258,9 @@ learn_policy(cont)
 
 --draw_layers(arg)
 
---learn_policy(cont)
-
 
 
 --interactive()
 --local net = build_net(100)
 --sample_episodes(N, function() return math.random(4) end)
+

@@ -46,8 +46,11 @@ local cmt = {
          assert(k <= M.S*M.S)
          local res = bit.band(bit.rshift(c[1], (M.S*M.S - k)*4) , 0xf)
          return tonumber(res)
+      end,
+      u64 = function(c)
+         return tonumber(c[1])
       end
-}
+   }
 }
 
 local c_d = ffi.new("double[1]")
