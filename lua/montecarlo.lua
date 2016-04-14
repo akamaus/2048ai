@@ -88,7 +88,7 @@ local F_draw = 10000
 local F_est = 50000
 local F_save = 1000000
 
-local LRate = 0.1
+local LRate = 0.3
 local Eps = 0.001
 
 function learn_policy(container)
@@ -119,18 +119,21 @@ function learn_policy(container)
 
       avg_val = avg_val * Tau + (1-Tau) * #states
       learner:apply(LRate / avg_val)
-      container.log_val[i] = avg_val
+
+      if i % (math.floor(F_print / 10)) == 0 then -- store learning curve point
+         container.log_val[i] = avg_val
+      end
 
       local err = mse / #states
 
       if i % F_print == 0 then
-         print("K", i, "avg val", avg_val, "val", #states, "err", mse / #states)
+         print("K", i, "NS", learner.num_states, "avg val", avg_val, "val", #states, "err", mse / #states)
       end
 
       if i % F_draw == 0 then
          P.with_multiplot(1,2,
                           { function () P.plot_table(preds) end,
-                             function () P.plot_tensors(container.log_val:narrow(1,1,i)) end } )
+                             function () P.plot_table(container.log_val) end } )
       end
 
       if i % F_est == 0 then
@@ -173,7 +176,7 @@ function build_container(N, learner)
       N = N,
       i = 1,
       learner = learner,
-      log_val = torch.Tensor(N):zero(),
+      log_val = {},
       avg_val = 0
    }
 
@@ -240,7 +243,13 @@ end
 
 local TL = require 'table_learner'
 
-local cont = build_container(tonumber(arg[2]), TL.build_table_learner(arg[1]))
+local cont
+if #arg == 1 then
+   cont = torch.load(arg[1])
+   cont.learner = TL.build_table_learner(nil, cont.learner)
+else
+   cont = build_container(tonumber(arg[2]), TL.build_table_learner(arg[1]))
+end
 learn_policy(cont)
 
 --learn_series(tonumber(arg[1]), tonumber(arg[2]))

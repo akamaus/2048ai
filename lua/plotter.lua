@@ -5,11 +5,13 @@ local gp = require 'gnuplot'
 local function indexes(tab)
    local min = 10e9
    local max = -10e9
+   local num_elems = 0
    for i,v in pairs(tab) do
       if min > i then min = i end
       if max < i then max = i end
+      num_elems = num_elems + 1
    end
-   return min, max
+   return min, max, num_elems
 end
 
 function M.with_multiplot(i,j, acts)
@@ -29,13 +31,14 @@ function M.with_multiplot(i,j, acts)
 end
 
 local function plot_table(tab)
-   local min, max = indexes(tab)
+   local min, max, num_elems = indexes(tab)
 
    if type(tab[min]) == "number" then
-      local ten = torch.Tensor(max - min + 1)
-      local i=1
-      for k=min,max do
-         ten[i] = tab[k]
+      local ten = torch.Tensor(num_elems,2)
+      local i = 1
+      for x,y in pairs(tab) do
+         ten[i][1] = x
+         ten[i][2] = y
          i = i + 1
       end
       gp.plot(ten, '~')
