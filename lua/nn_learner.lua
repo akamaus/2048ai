@@ -44,8 +44,10 @@ end
 
 -- set output neuron
 local function encode_output(t, val)
-   t:fill(0)
-   t[val+1] = 1
+   for i=1,OutVars do
+      local dist = math.abs(val - i)
+      t[i] = -dist*math.sqrt(dist)
+   end
 end
 
 -- get most active output neuron
