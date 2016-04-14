@@ -34,6 +34,12 @@ function find_max(k1, k2, f)
    return best_k, best
 end
 
+function every(K, i, f)
+   if math.floor(i) % K == 0 then
+      f()
+   end
+end
+
 -- Generate single episode on board b using policy
 function gen_episode(b, policy)
    local states = {}
@@ -120,34 +126,47 @@ function learn_policy(container)
       avg_val = avg_val * Tau + (1-Tau) * #states
       learner:apply(LRate / avg_val)
 
-      if i % (math.floor(F_print / 10)) == 0 then -- store learning curve point
-         container.log_val[i] = avg_val
-      end
+      every(F_print / 10, i, -- store learning curve point
+            function()
+               container.log_val[i] = avg_val
+            end
+      )
 
       local err = mse / #states
 
-      if i % F_print == 0 then
-         print("K", i, "NS", learner.num_states, "avg val", avg_val, "val", #states, "err", mse / #states)
-      end
+      every(F_print, i, -- print progress
+            function()
+               print("K", i, "NS", learner.num_states, "avg val", avg_val, "val", #states, "err", mse / #states)
+            end
+      )
 
-      if i % F_draw == 0 then
-         P.with_multiplot(1,2,
-                          { function () P.plot_table(preds) end,
-                             function () P.plot_table(container.log_val) end } )
-      end
+      every(F_draw,i,
+            function()
+               P.with_multiplot(1,2,
+                                function()
+                                   P.plot_table(preds)
+                                   P.plot_table(container.log_val) 
+                                end
+               )
+            end
+      )
 
-      if i % F_est == 0 then
-         sample_episodes(1000, pol)
-      end
+      every(F_est,i,
+            function()
+               sample_episodes(1000, pol)
+            end
+      )
 
       container.i = container.i + 1
 
-      if i % F_save == 0 then
-         local path = string.format("checkpoints/nn_%s_iter%d_avg%0.2f.sav", learner.name, i, avg_val)
-         container.avg_val = avg_val
-         torch.save(path, container)
-         print("saved " .. path)
-      end
+      every(F_save, i,
+            function()
+               local path = string.format("checkpoints/nn_%s_iter%d_avg%0.2f.sav", learner.name, i, avg_val)
+               container.avg_val = avg_val
+               torch.save(path, container)
+               print("saved " .. path)
+            end
+      )
    end
 
    P.plot_tensors(container.log_val)
