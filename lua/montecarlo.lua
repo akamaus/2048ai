@@ -65,7 +65,7 @@ local F_draw = 100
 local F_est = 10000
 local F_save = 100000
 
-local LRate = 0.01
+local LRate = 0.001
 local Eps = 0.001
 
 function learn_policy(container)
@@ -78,15 +78,13 @@ function learn_policy(container)
       return eps_greedy_policy(learner, Eps, b)
    end
 
-   local preds_ten = torch.Tensor(1000, NN.OutVars)
-   local preds = {}
-
    while container.i <= container.N do
       local i = container.i
 
       local b = Board.new()
       local states = gen_episode(b, pol)
 
+      local preds = {}
       local mse = 0
       for si,st in ipairs(states) do
          local val = #states - si
@@ -94,7 +92,6 @@ function learn_policy(container)
          mse = mse + err*err
          every(F_draw, i, function()
                   preds[#preds + 1] = val + err
-                  preds_ten[si] = pred
          end)
       end
 
@@ -113,10 +110,8 @@ function learn_policy(container)
             function()
                P.with_multiplot(1,2,
                                 function()
-                                   local pr  = preds_ten:narrow(1, 1, #states):transpose(1,2)
-                                   GP.imagesc(pr)
                                    P.plot_table(preds)
-                                   preds = {}
+                                   P.plot_table(container.log_val)
                                 end
                )
             end

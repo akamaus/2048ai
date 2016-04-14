@@ -9,7 +9,7 @@ local M = {}
 -- Neural network policy
 local Cells = Board.S * Board.S -- num of elems on board
 local CellVars = 16 -- num of elem variants
-local OutVars = 100
+local OutVars = 1
 
 -- build Torch-NN network
 local function build_net(name, w)
@@ -44,16 +44,12 @@ end
 
 -- set output neuron
 local function encode_output(t, val)
-   for i=1,OutVars do
-      local dist = math.abs(val - i)
-      t[i] = -dist*math.sqrt(dist)
-   end
+   t[1] = val
 end
 
 -- get most active output neuron
 local function decode_output(t)
-   val,ind = torch.max(t,1)
-   return ind[1]-1, val
+   return t[1]
 end
 
 local function draw_input(t, st)
