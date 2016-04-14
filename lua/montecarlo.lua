@@ -5,40 +5,11 @@ local P = require 'plotter'
 
 local Board = require 'board'
 
--- sleeps s seconds
-function sleep(s)
-  local ntime = os.time() + s
-  repeat until os.time() > ntime
-end
+require 'helpers'
 
--- folds table t using function f and start state s0
-function table.fold(t, f, s0)
-   local s = s0 or 0
-   for i,v in ipairs(t) do
-      s = f(s, v)
-   end
-   return s
-end
+--local TL = require 'table_learner'
+local NN = require 'nn_learner'
 
--- find max_ind and max of function applied to k1..k2
-function find_max(k1, k2, f)
-   local best = nil
-   local best_k = nil
-
-   for k=k1,k2 do
-      local v = f(k)
-      if (best_k == nil or v > best) then
-         best_k, best = k, v
-      end
-   end
-   return best_k, best
-end
-
-function every(K, i, f)
-   if math.floor(i) % K == 0 then
-      f()
-   end
-end
 
 -- Generate single episode on board b using policy
 function gen_episode(b, policy)
@@ -89,12 +60,12 @@ function eps_greedy_policy(learner, eps, b)
    return best_move
 end
 
-local F_print = 1000
-local F_draw = 10000
-local F_est = 50000
-local F_save = 1000000
+local F_print = 100
+local F_draw = 100
+local F_est = 10000
+local F_save = 100000
 
-local LRate = 0.3
+local LRate = 0.01
 local Eps = 0.001
 
 function learn_policy(container)
@@ -107,61 +78,57 @@ function learn_policy(container)
       return eps_greedy_policy(learner, Eps, b)
    end
 
+   local preds_ten = torch.Tensor(1000, NN.OutVars)
+   local preds = {}
+
    while container.i <= container.N do
       local i = container.i
 
       local b = Board.new()
       local states = gen_episode(b, pol)
 
-      local preds = {}
-
       local mse = 0
       for si,st in ipairs(states) do
          local val = #states - si
-         local err = learner:learn(st, val)
+         local err, pred = learner:learn(st, val)
          mse = mse + err*err
-         preds[#preds + 1] = val + err
+         every(F_draw, i, function()
+                  preds[#preds + 1] = val + err
+                  preds_ten[si] = pred
+         end)
       end
 
       avg_val = avg_val * Tau + (1-Tau) * #states
-      learner:apply(LRate / avg_val)
+      learner:apply(LRate)
 
-      every(F_print / 10, i, -- store learning curve point
-            function()
-               container.log_val[i] = avg_val
-            end
-      )
+      -- store learning curve point
+      every(F_print / 10, i, function() container.log_val[i] = avg_val end)
 
       local err = mse / #states
 
-      every(F_print, i, -- print progress
-            function()
-               print("K", i, "NS", learner.num_states, "avg val", avg_val, "val", #states, "err", mse / #states)
-            end
-      )
+      -- print progress
+      every(F_print, i, function() print("K", i, "NS", learner.num_states, "avg val", avg_val, "val", #states, "err", mse / #states) end )
 
       every(F_draw,i,
             function()
                P.with_multiplot(1,2,
                                 function()
+                                   local pr  = preds_ten:narrow(1, 1, #states):transpose(1,2)
+                                   GP.imagesc(pr)
                                    P.plot_table(preds)
-                                   P.plot_table(container.log_val) 
+                                   preds = {}
                                 end
                )
             end
       )
 
-      every(F_est,i,
-            function()
-               sample_episodes(1000, pol)
-            end
-      )
+      every(F_est,i, function() sample_episodes(1000, pol) end)
 
       container.i = container.i + 1
 
       every(F_save, i,
             function()
-               local path = string.format("checkpoints/nn_%s_iter%d_avg%0.2f.sav", learner.name, i, avg_val)
+               local path = string.format("checkpoints/%s_iter_%d_avg_%0.2f.sav", learner.name, i, avg_val)
                container.avg_val = avg_val
                torch.save(path, container)
                print("saved " .. path)
@@ -260,15 +227,21 @@ function draw_layer_variants(checkpoints)
    )
 end
 
-local TL = require 'table_learner'
-
 local cont
+-- if #arg == 1 then
+--    cont = torch.load(arg[1])
+--    cont.learner = TL.build_table_learner(nil, cont.learner)
+-- else
+--    cont = build_container(tonumber(arg[2]), TL.build_table_learner(arg[1]))
+-- end
+
 if #arg == 1 then
    cont = torch.load(arg[1])
-   cont.learner = TL.build_table_learner(nil, cont.learner)
+   cont.learner = NN.build_nn_learner(nil, nil, cont.learner)
 else
-   cont = build_container(tonumber(arg[2]), TL.build_table_learner(arg[1]))
+   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {}))
 end
+
 learn_policy(cont)
 
 --learn_series(tonumber(arg[1]), tonumber(arg[2]))
