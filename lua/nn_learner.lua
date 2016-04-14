@@ -15,7 +15,7 @@ local OutVars = 1
 local function build_net(name, w)
    name = name or ""
    local net = NN.Sequential()
-   local first_layer = Cells * CellVars * 2
+   local first_layer = Cells * CellVars
    local last_layer = first_layer
    local formula = tostring(last_layer)
    for i, sz in pairs(w) do
@@ -34,20 +34,12 @@ end
 
 -- write board state into Tensor
 local function encode_input(t, st)
-   local src = st[1]
-   local dst = st[2]
    t:fill(0)
    for i=1,Cells do
-      for j=1,src:at(i) do
+      for j=1,st:at(i) do
          t[(i-1) * CellVars + j] = 1
       end
    end
-   for i=1,Cells do
-      for j=1,dst:at(i) do
-         t[(i-1 + Cells) * CellVars + j] = 1
-      end
-   end
-
 end
 
 -- set output neuron
@@ -94,7 +86,7 @@ function M.build_nn_learner(name, w, L)
    local L = L or {
       name = name,
       net = build_net(name, w),
-      in_t = torch.Tensor(Cells * 2 * CellVars),
+      in_t = torch.Tensor(Cells * CellVars),
       out_t = torch.Tensor(OutVars),
       cr = nn.MSECriterion()
    }

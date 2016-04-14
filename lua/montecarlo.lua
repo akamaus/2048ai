@@ -53,7 +53,7 @@ function eps_greedy_policy(learner, eps, b)
    function try_move(m)
       Board.copy(b_tst, b)
       b_tst:Move(m)
-      return learner:est_value({b:Compress(), b_tst:Compress()})
+      return learner:est_value(b_tst:Compress())
    end
 
    best_move, best_val = find_max(1,4, try_move)
@@ -65,7 +65,7 @@ local F_draw = 100
 local F_est = 10000
 local F_save = 100000
 
-local LRate = 0.00001
+local LRate = 0.001
 local Eps = 0.001
 
 function learn_policy(container)
@@ -86,17 +86,13 @@ function learn_policy(container)
 
       local preds = {}
       local mse = 0
-      local prev_st = nil
       for si,st in ipairs(states) do
-         if prev_st then
-            local val = #states - si
-            local err, pred = learner:learn({prev_st,st}, val)
-            mse = mse + err*err
-            every(F_draw, i, function()
-                     preds[#preds + 1] = val + err
-            end)
-         end
-         prev_st = st
+         local val = #states - si
+         local err, pred = learner:learn(st, val)
+         mse = mse + err*err
+         every(F_draw, i, function()
+                  preds[#preds + 1] = val + err
+         end)
       end
 
       avg_val = avg_val * Tau + (1-Tau) * #states
@@ -238,7 +234,7 @@ if #arg == 1 then
    cont = torch.load(arg[1])
    cont.learner = NN.build_nn_learner(nil, nil, cont.learner)
 else
-   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {500}))
+   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {}))
 end
 
 learn_policy(cont)
