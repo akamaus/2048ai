@@ -33,3 +33,15 @@ function every(K, i, f)
       f()
    end
 end
+
+function indexes(tab)
+   local min = 10e9
+   local max = -10e9
+   local num_elems = 0
+   for i,v in pairs(tab) do
+      if min > i then min = i end
+      if max < i then max = i end
+      num_elems = num_elems + 1
+   end
+   return min, max, num_elems
+end

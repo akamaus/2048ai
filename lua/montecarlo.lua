@@ -42,6 +42,23 @@ function sample_episodes(N, policy)
    GP.hist(torch.Tensor(tab))
 end
 
+function build_container(N, learner)
+   local c = {
+      N = N,
+      i = 1,
+      learner = learner,
+      log_val = {},
+      avg_val = 0
+   }
+
+   return c
+end
+
+function save_container(container, note)
+   local path = string.format("checkpoints/%s_%s_iter_%d_avg_%0.2f.sav", container.learner.name, note, container.i, container.avg_val)
+   torch.save(path, container)
+   print("saved " .. path)
+end
 
 -- policy based on NN decision
 function eps_greedy_policy(learner, eps, b)
@@ -62,15 +79,21 @@ end
 
 local F_print = 100
 local F_draw = 100
-local F_est = 10000
-local F_save = 100000
+local F_est = 5000
+local F_save = 1000
 
-local LRate = 0.001
-local Eps = 0.001
+local LRate = 0.0001
+local Eps = 0.1
 
 function learn_policy(container)
    local learner = container.learner
    local avg_val = container.avg_val
+   local avg_mse = 0
+   local min_val = 1e9
+   local max_val = -1e9
+
+   local max_snapshot_val = container.avg_val
+   local next_max_snapshot = container.i+100
 
    local Tau = 0.99
 
@@ -86,17 +109,21 @@ function learn_policy(container)
 
       local preds = {}
       local mse = 0
+      local val = #states
       for si,st in ipairs(states) do
-         local val = #states - si
-         local err, pred = learner:learn(st, val)
+         local st_val = (val - si) / 100
+         local err, pred = learner:learn(st, st_val)
          mse = mse + err*err
          every(F_draw, i, function()
-                  preds[#preds + 1] = val + err
+                  preds[#preds + 1] = st_val + err
          end)
       end
 
+      min_val = math.min(min_val, val)
+      max_val = math.max(max_val, val)
       avg_val = avg_val * Tau + (1-Tau) * #states
-      learner:apply(LRate)
+      avg_mse = avg_mse * Tau + (1-Tau) * mse
+      learner:apply(LRate / math.log(i+1))
 
       -- store learning curve point
       every(F_print / 10, i, function() container.log_val[i] = avg_val end)
@@ -104,7 +131,12 @@ function learn_policy(container)
       local err = mse / #states
 
       -- print progress
-      every(F_print, i, function() print("K", i, "NS", learner.num_states, "avg val", avg_val, "val", #states, "err", mse / #states) end )
+      every(F_print, i, function()
+               print("K", i, "NS", learner.num_states, "avg val", avg_val, "avg mse", avg_mse,
+                     "min", min_val, "max", max_val, "val", #states, "mse", mse / #states)
+               min_val = 1e9
+               max_val = -1e9
+      end )
 
       every(F_draw,i,
             function()
@@ -120,15 +152,16 @@ function learn_policy(container)
       every(F_est,i, function() sample_episodes(1000, pol) end)
 
       container.i = container.i + 1
+      container.avg_val = avg_val
 
-      every(F_save, i,
-            function()
-               local path = string.format("checkpoints/%s_iter_%d_avg_%0.2f.sav", learner.name, i, avg_val)
-               container.avg_val = avg_val
-               torch.save(path, container)
-               print("saved " .. path)
-            end
-      )
+      if i > next_max_snapshot and avg_val > max_snapshot_val * 1.05 then
+         max_snapshot_val = avg_val
+         save_container(container, "RECORD")
+      end
+
+      every(F_save, i, function()
+               max_snapshot_val = math.max(max_snapshot_val, avg_val)
+               save_container(container, "") end)
    end
 
    P.plot_tensors(container.log_val)
@@ -152,31 +185,33 @@ function interactive()
    until stop
 end
 
-function build_container(N, learner)
-   local c = {
-      N = N,
-      i = 1,
-      learner = learner,
-      log_val = {},
-      avg_val = 0
-   }
-
-   return c
-end
-
 --
 -- Analysis
 --
 
 -- draw layer as it evolves through success checkpoints
 function draw_layer_evolution(checkpoints)
-   GP.raw('set cbrange [-40:40]')
-   GP.raw('set palette defined (-50 "blue", 0 "white", 50 "red")')
+--   GP.raw('set cbrange [-1:1]')
+--   GP.raw('set palette defined (-1 "blue", 0 "white", 1 "red")')
 
+   GP.raw("set terminal gif animate delay 100 size 1200,700")
+   GP.raw('set output "layer_evolution.gif"')
    for i,f in ipairs(checkpoints) do
       cont = torch.load(f)
-      GP.imagesc(cont.net.modules[1].weight:resize(Cells,CellVars), 'color')
-      sleep(1)
+--      P.with_multiplot(2,1, function()
+--      first,last = indexes(cont.log_val)
+      GP.raw(string.format('set title "iter %d; avg_val %f"', cont.i, cont.log_val[cont.i-1]))
+             GP.imagesc(cont.learner.net.modules[1].weight, 'color')
+--                          GP.plot(cont.learner.net.modules[1].bias)
+--                          GP.imagesc(cont.learner.net.modules[3].weight, 'color')
+--                          GP.plot(cont.learner.net.modules[3].bias)
+--                          GP.imagesc(cont.learner.net.modules[3].weight, 'color')
+--                          GP.plot(cont.learner.net.modules[3].bias, 'color')
+
+--      end)
+
+      print("iter ", cont.i, "avg val", cont.log_val[cont.i-1])
+--      sleep(1)
    end
 --   io.read("*l")
 end
@@ -233,11 +268,14 @@ local cont
 if #arg == 1 then
    cont = torch.load(arg[1])
    cont.learner = NN.build_nn_learner(nil, nil, cont.learner)
+   learn_policy(cont)
+elseif #arg == 2 then
+   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {200,50}))
+   learn_policy(cont)
 else
-   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {}))
+   draw_layer_evolution(arg)
 end
 
-learn_policy(cont)
 
 --learn_series(tonumber(arg[1]), tonumber(arg[2]))
 

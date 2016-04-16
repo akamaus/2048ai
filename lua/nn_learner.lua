@@ -20,7 +20,7 @@ local function build_net(name, w)
    local formula = tostring(last_layer)
    for i, sz in pairs(w) do
       net:add(nn.Linear(last_layer,sz))
-      net:add(nn.Tanh())
+      net:add(nn.ReLU())
       last_layer = sz
       formula = formula .. ' ' .. tostring(sz)
    end
@@ -70,6 +70,7 @@ local mt = {
          encode_input(L.in_t, st)
          encode_output(L.out_t, val)
          local pred = L.net:forward(L.in_t)
+         L.cr:forward(pred, L.out_t)
          local pred_val = decode_output(pred)
          L.net:backward(L.in_t, L.cr:backward(pred, L.out_t))
          return pred_val - val, pred
