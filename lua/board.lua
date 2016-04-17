@@ -1,6 +1,5 @@
 
 local M = {}
-M.S = 3
 
 local ffi = require 'ffi'
 
@@ -10,6 +9,8 @@ ffi.cdef [[
     typedef struct board board;
 
     typedef enum turn { Up = 1, Left = 2, Down = 3, Right = 4 } turn;
+
+    int board_size();
 
     board *board_new();
     void board_free(board *);
@@ -74,6 +75,8 @@ M.Up = C.Up
 M.Down = C.Down
 M.Left = C.Left
 M.Right = C.Right
+
+M.S = B.board_size()
 
 M.srand = function(s) C.srand(s) end
 

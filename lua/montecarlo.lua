@@ -80,7 +80,7 @@ end
 local F_print = 100
 local F_draw = 100
 local F_est = 5000
-local F_save = 1000
+local F_save = 10000
 
 local LRate = 0.0001
 local Eps = 0.1
@@ -93,7 +93,7 @@ function learn_policy(container)
    local max_val = -1e9
 
    local max_snapshot_val = container.avg_val
-   local next_max_snapshot = container.i+100
+   local next_max_snapshot = container.i+1000
 
    local Tau = 0.99
 
@@ -194,13 +194,13 @@ function draw_layer_evolution(checkpoints)
 --   GP.raw('set cbrange [-1:1]')
 --   GP.raw('set palette defined (-1 "blue", 0 "white", 1 "red")')
 
-   GP.raw("set terminal gif animate delay 100 size 1200,700")
-   GP.raw('set output "layer_evolution.gif"')
+--   GP.raw("set terminal gif animate delay 100 size 1200,700")
+--   GP.raw('set output "layer_evolution.gif"')
    for i,f in ipairs(checkpoints) do
       cont = torch.load(f)
 --      P.with_multiplot(2,1, function()
---      first,last = indexes(cont.log_val)
-      GP.raw(string.format('set title "iter %d; avg_val %f"', cont.i, cont.log_val[cont.i-1]))
+      first,last = indexes(cont.log_val)
+      GP.raw(string.format('set title "iter %d; avg_val %f"', cont.i, cont.log_val[last]))
              GP.imagesc(cont.learner.net.modules[1].weight, 'color')
 --                          GP.plot(cont.learner.net.modules[1].bias)
 --                          GP.imagesc(cont.learner.net.modules[3].weight, 'color')
@@ -210,7 +210,7 @@ function draw_layer_evolution(checkpoints)
 
 --      end)
 
-      print("iter ", cont.i, "avg val", cont.log_val[cont.i-1])
+      print("iter ", cont.i, "weight sum", cont.learner.net.modules[1].weight:sum(),  "avg val", cont.log_val[cont.i-1])
 --      sleep(1)
    end
 --   io.read("*l")

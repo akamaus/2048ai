@@ -1,8 +1,13 @@
 #include "../board.hpp"
 
 extern "C" {
-    typedef Board<3> board;
+    constexpr int BS = 4;
+    typedef Board<BS> board;
     enum turn { Up = 1, Left = 2, Down = 3, Right = 4 };
+
+    int board_size() {
+        return BS;
+    }
 
     board *board_new();
     void board_free(board *);

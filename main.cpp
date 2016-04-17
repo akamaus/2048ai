@@ -13,7 +13,7 @@
 #include "test_pole.hpp"
 
 
-using GameBoard = Board<3>;
+using GameBoard = Board<4>;
 
 using MoveAnalysis = std::tuple<Turn, double>;
 using Strategy = std::function<Turn(const GameBoard &)>;
