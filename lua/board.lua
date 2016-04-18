@@ -33,7 +33,8 @@ local cmt = {
       local s = ""
       for i=1,M.S do
          for j=1,M.S do
-            local res = c:at2d(i, j)
+            local k = (i-1)*M.S + j
+            local res = c:at(k)
             s = s .. tostring(res)
          end
          s = s .. "\n"
@@ -46,11 +47,6 @@ local cmt = {
          assert(k <= M.S*M.S)
          local res = bit.band(bit.rshift(c[1], (M.S*M.S - k)*4) , 0xf)
          return tonumber(res)
-      end,
-      at2d = function(c, i, j)
-         local k = (i-1)*M.S + j
-         local res = c:at(k)
-         return res
       end,
       u64 = function(c)
          return tonumber(c[1])

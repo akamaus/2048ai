@@ -32,40 +32,12 @@ local function build_net(name, w)
    return net
 end
 
--- build Torch-NN network
-local function build_conv_net(name, ofeatures, k_size, w)
-   name = name or ""
-   local net = NN.Sequential()
-   net:add(nn.SpatialConvolution(CellVars, ofeatures, k_size,k_size))
-   local first_layer = ofeatures * (Board.S - 2) * (Board.S - 2)  -- Cells * CellVars
-   local last_layer = first_layer
-   local formula = tostring(last_layer)
-   print("fl", Board.S)
-
-   net:add(nn.View(first_layer))
-
-   for i, sz in pairs(w) do
-      net:add(nn.Linear(last_layer,sz))
-      net:add(nn.ReLU())
-      last_layer = sz
-      formula = formula .. ' ' .. tostring(sz)
-   end
-   net:add(nn.Linear(last_layer,OutVars))
-   formula = formula .. ' ' .. OutVars
-
-   net.name = string.format("%s_layers%s", name, formula)
-
-   return net
-end
-
-
 -- write board state into Tensor
 local function encode_input(t, st)
    t:fill(0)
-   for i=1,Board.S do
-      for j = 1,Board.S do
-         local k = st:at2d(i,j) + 1
-         t[k][i][j] = 1
+   for i=1,Cells do
+      for j=1,st:at(i) do
+         t[(i-1) * CellVars + j] = 1
       end
    end
 end
@@ -114,8 +86,8 @@ local mt = {
 function M.build_nn_learner(name, w, L)
    local L = L or {
       name = name,
-      net = build_conv_net(name, 10, 3, w),
-      in_t = torch.Tensor(CellVars, Board.S, Board.S),
+      net = build_net(name, w),
+      in_t = torch.Tensor(Cells * CellVars),
       out_t = torch.Tensor(OutVars),
       cr = nn.MSECriterion()
    }

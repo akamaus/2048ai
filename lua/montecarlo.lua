@@ -77,12 +77,12 @@ function eps_greedy_policy(learner, eps, b)
    return best_move
 end
 
-local F_print = 10
-local F_draw = 10
+local F_print = 100
+local F_draw = 100
 local F_est = 5000
-local F_save = 1000
+local F_save = 10000
 
-local LRate = 0.001
+local LRate = 0.0001
 local Eps = 0.1
 
 function learn_policy(container)
@@ -265,16 +265,12 @@ local cont
 --    cont = build_container(tonumber(arg[2]), TL.build_table_learner(arg[1]))
 -- end
 
--- b = Board.new()
--- sample_episodes(1000, function(b) return eps_greedy_policy(nil, 2, b) end)
-
-
 if #arg == 1 then
    cont = torch.load(arg[1])
    cont.learner = NN.build_nn_learner(nil, nil, cont.learner)
    learn_policy(cont)
 elseif #arg == 2 then
-   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {200, 50} )) -- {200,50}))
+   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {200,50}))
    learn_policy(cont)
 else
    draw_layer_evolution(arg)
