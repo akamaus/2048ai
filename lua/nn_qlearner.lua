@@ -9,9 +9,11 @@ local M = {}
 -- Neural network policy
 local Cells = Board.S * Board.S -- num of elems on board
 local CellVars = 16 -- num of elem variants
-local OutVars = 1
+local OutVars = 4
 
--- build Torch-NN network
+local alpha = 0.9 -- backup rate
+
+-- build Torch-NN network, Estimates Q(s) = [a1,a2,a3,a4]
 local function build_net(name, w)
    name = name or ""
    local net = NN.Sequential()
@@ -47,9 +49,10 @@ local function encode_output(t, val)
    t[1] = val
 end
 
--- get most active output neuron
+-- get most active output neuron and its activation level
 local function decode_output(t)
-   return t[1]
+  local q_ten,a_ten = torch.max(t,1)
+  return a_ten[1],q_ten[1]
 end
 
 local function draw_input(t, st)
@@ -57,24 +60,36 @@ local function draw_input(t, st)
    GP.imagesc(img:resize(Cells, CellVars))
 end
 
+local function learn_minibatch(self, batch)
+  local err = 0
+  for i=1, #batch do
+    local sample = batch[i]
+    encode_input(self.in_t, sample.s0)
+    local preds = self.net:forward(self.in_t)
+    for i=1, OutVars do
+      self.out_t[i] = preds[i]
+    end
+    local _, v1 = self:best_move(sample.s1)
+
+    self.out_t[sample.action] = alpha * self.out_t[sample.action] + (1 - alpha) * (sample.reward + v1)
+
+    self.cr:forward(preds, self.out_t)
+    self.net:backward(self.in_t, self.cr:backward(preds, self.out_t))
+    -- TODO err
+  end
+  return err
+end
+
 local mt = {
    __index = {
       -- returns estimated value of a position
-      est_value = function(L, st)
+      best_move = function(L, st)
          encode_input(L.in_t, st)
          local pred = L.net:forward(L.in_t)
          return decode_output(pred)
       end,
       -- learns true value and returns error
-      learn = function(L, st, val)
-         encode_input(L.in_t, st)
-         encode_output(L.out_t, val)
-         local pred = L.net:forward(L.in_t)
-         L.cr:forward(pred, L.out_t)
-         local pred_val = decode_output(pred)
-         L.net:backward(L.in_t, L.cr:backward(pred, L.out_t))
-         return pred_val - val, pred
-      end,
+      learn = learn_minibatch,
       -- applies learned material
       apply = function(L, rate)
          L.net:updateParameters(rate)
@@ -89,7 +104,8 @@ function M.build_nn_learner(name, w, L)
       net = build_net(name, w),
       in_t = torch.Tensor(Cells * CellVars),
       out_t = torch.Tensor(OutVars),
-      cr = nn.MSECriterion()
+      cr = nn.MSECriterion(),
+      type = 'q-learner'
    }
    L.net:zeroGradParameters()
 

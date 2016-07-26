@@ -8,20 +8,23 @@ local Board = require 'board'
 require 'helpers'
 
 --local TL = require 'table_learner'
-local NN = require 'nn_learner'
+local NN = require 'nn_qlearner'
 
 
 -- Generate single episode on board b using policy
-function gen_episode(b, policy)
-  local states = {}
+local function gen_episode(b, policy)
+  local episode = {}
   b:RandomGen()
   repeat
-    local move = policy(b)
+    local s0 = b:Compress()
+    local move, value = policy(b)
     b:Move(move)
-    states[#states + 1] = b:Compress()
+    b:RandomGen()
+    local s1 = b:Compress()
     local finish = b:IsTerminal()
+    table.insert(episode, {s0 = s0, s1 = s1, reward = finish and 0 or 1, action = move, value = value})
   until finish
-  return states
+  return episode
 end
 
 -- Generate a bunch of episodes and draw length histogram
@@ -63,15 +66,7 @@ function eps_greedy_policy(learner, eps, b)
       return math.random(1,4),0
    end
 
-   local b_tst = Board.new()
-   function try_move(m)
-      Board.copy(b_tst, b)
-      b_tst:Move(m)
-      return learner:est_value(b_tst:Compress())
-   end
-
-   best_move, best_val = find_max(1,4, try_move)
-   return best_move
+   return learner:best_move(b:Compress())
 end
 
 local F_print = 100
@@ -82,8 +77,15 @@ local F_save = 1000
 local LRate = 0.0001
 local Eps = 0.1
 
+local MemorySize = 10000
+local BatchSize = 100
+
 function learn_policy(container)
-   local learner = container.learner
+  assert(container.learner.type == 'q-learner', 'must be applied to q-learners')
+
+  local learner = container.learner
+  local episodic_memory = {}
+
    local avg_val = container.avg_val
    local avg_mse = 0
    local min_val = 1e9
@@ -98,28 +100,37 @@ function learn_policy(container)
       return eps_greedy_policy(learner, Eps, b)
    end
 
+   local minibatch = {}
+
    while container.i <= container.N do
       local i = container.i
 
       local b = Board.new()
       local states = gen_episode(b, pol)
 
-      local preds = {}
       local mse = 0
       local val = #states
+
+      -- enriching memory
       for si,st in ipairs(states) do
-         local st_val = (val - si) / 100
-         local err, pred = learner:learn(st, st_val)
-         mse = mse + err*err
-         every(F_draw, i, function()
-                  preds[#preds + 1] = st_val + err
-         end)
+        if #episodic_memory < MemorySize then
+          table.insert(episodic_memory, st)
+        else
+          episodic_memory[math.random(#episodic_memory)] = st
+        end
       end
+
+      for i=1, BatchSize do
+        minibatch[i] = episodic_memory[math.random(#episodic_memory)]
+      end
+
+      local err = learner:learn(minibatch)
 
       min_val = math.min(min_val, val)
       max_val = math.max(max_val, val)
       avg_val = avg_val * Tau + (1-Tau) * #states
       avg_mse = avg_mse * Tau + (1-Tau) * mse
+
       learner:apply(LRate / math.log(i+1))
 
       -- store learning curve point
@@ -135,16 +146,13 @@ function learn_policy(container)
                max_val = -1e9
       end )
 
-      every(F_draw,i,
-            function()
-               P.with_multiplot(1,2,
-                                function()
-                                   P.plot_table(preds)
-                                   P.plot_table(container.log_val)
-                                end
-               )
-            end
-      )
+      every(F_draw, i, function()
+              local preds = {}
+              for i=1,#states do
+                preds[i] = states[i].value
+              end
+              P.plot_table(preds)
+      end)
 
       every(F_est,i, function() sample_episodes(1000, pol) end)
 
