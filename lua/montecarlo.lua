@@ -270,7 +270,7 @@ if #arg == 1 then
    cont.learner = NN.build_nn_learner(nil, nil, cont.learner)
    learn_policy(cont)
 elseif #arg == 2 then
-   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {200,50}))
+   cont = build_container(tonumber(arg[2]), NN.build_nn_learner(arg[1], {100}))
    learn_policy(cont)
 else
    draw_layer_evolution(arg)
