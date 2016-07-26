@@ -11,7 +11,8 @@ local Cells = Board.S * Board.S -- num of elems on board
 local CellVars = 16 -- num of elem variants
 local OutVars = 4
 
-local alpha = 0.9 -- backup rate
+local Alpha = 0.95 -- backup rate
+local Gamma = 1
 
 -- build Torch-NN network, Estimates Q(s) = [a1,a2,a3,a4]
 local function build_net(name, w)
@@ -64,14 +65,24 @@ local function learn_minibatch(self, batch)
   local err = 0
   for i=1, #batch do
     local sample = batch[i]
-    encode_input(self.in_t, sample.s0)
-    local preds = self.net:forward(self.in_t)
-    for i=1, OutVars do
-      self.out_t[i] = preds[i]
-    end
     local _, v1 = self:best_move(sample.s1)
 
-    self.out_t[sample.action] = alpha * self.out_t[sample.action] + (1 - alpha) * (sample.reward + v1)
+    encode_input(self.in_t, sample.s0)
+    local preds = self.net:forward(self.in_t)
+    local v0 = preds[sample.action]
+    for a=1, OutVars do
+      self.out_t[a] = preds[a]
+    end
+
+    if i == 1 and math.random() < 0.1 then
+      print(v0, v1, sample.action, sample.reward)
+    end
+
+    if i < #batch then -- non-terminal state
+      self.out_t[sample.action] = Alpha * v0 + (1 - Alpha) * (sample.reward + Gamma * v1)
+    else
+      self.out_t[sample.action] = Alpha * v0 + (1 - Alpha) * sample.reward
+    end
 
     self.cr:forward(preds, self.out_t)
     self.net:backward(self.in_t, self.cr:backward(preds, self.out_t))

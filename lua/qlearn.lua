@@ -21,8 +21,8 @@ local function gen_episode(b, policy)
     b:Move(move)
     b:RandomGen()
     local s1 = b:Compress()
+    table.insert(episode, {s0 = s0, s1 = s1, reward = finish and 0 or 0.01, action = move, value = value})
     local finish = b:IsTerminal()
-    table.insert(episode, {s0 = s0, s1 = s1, reward = finish and 0 or 1, action = move, value = value})
   until finish
   return episode
 end
@@ -124,14 +124,15 @@ function learn_policy(container)
         minibatch[i] = episodic_memory[math.random(#episodic_memory)]
       end
 
-      local err = learner:learn(minibatch)
+      if #episodic_memory == MemorySize then
+        local err = learner:learn(minibatch)
+        learner:apply(LRate / math.log(i+1))
+      end
 
       min_val = math.min(min_val, val)
       max_val = math.max(max_val, val)
       avg_val = avg_val * Tau + (1-Tau) * #states
       avg_mse = avg_mse * Tau + (1-Tau) * mse
-
-      learner:apply(LRate / math.log(i+1))
 
       -- store learning curve point
       every(F_print / 10, i, function() container.log_val[i] = avg_val end)
@@ -147,11 +148,17 @@ function learn_policy(container)
       end )
 
       every(F_draw, i, function()
-              local preds = {}
+              local values = {}
+              local actions = {}
               for i=1,#states do
-                preds[i] = states[i].value
+                values[i] = states[i].value
+                actions[i] = states[i].action
               end
-              P.plot_table(preds)
+              P.with_multiplot(1,2,
+                               function()
+                                 P.plot_table(values)
+                                 P.plot_table(actions)
+              end)
       end)
 
       every(F_est,i, function() sample_episodes(1000, pol) end)
@@ -169,7 +176,7 @@ function learn_policy(container)
                save_container(container, "") end)
    end
 
-   P.plot_tensors(container.log_val)
+   P.plot_table(container.log_val)
    --   print("avg", table.fold(tab, function(a,b) return a+b end) / N)
    --   GP.hist(torch.Tensor(tab))
 end

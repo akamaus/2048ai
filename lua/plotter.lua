@@ -46,7 +46,7 @@ local function plot_table(tab)
          i = i + 1
       end
       gp.imagesc(ten)
-   else error("unknown elt")
+   else error("unknown elt: " .. type(tab[min]))
    end
 end
 
