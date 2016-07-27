@@ -1,3 +1,6 @@
+local strict = require "std.strict"
+local _ENV = strict (_G)
+
 package.path = package.path .. ';./?.lua'
 
 local GP = require 'gnuplot'
@@ -21,8 +24,8 @@ local function gen_episode(b, policy)
     b:Move(move)
     b:RandomGen()
     local s1 = b:Compress()
-    table.insert(episode, {s0 = s0, s1 = s1, reward = finish and 0 or 0.01, action = move, value = value})
     local finish = b:IsTerminal()
+    table.insert(episode, {s0 = s0, s1 = s1, reward = finish and 0 or 1, finish = finish, action = move, value = value})
   until finish
   return episode
 end
@@ -72,12 +75,12 @@ end
 local F_print = 100
 local F_draw = 100
 local F_est = 5000
-local F_save = 1000
+local F_save = 10000
 
-local LRate = 0.0001
+local LRate = 0.001
 local Eps = 0.1
 
-local MemorySize = 10000
+local MemorySize = 1000
 local BatchSize = 100
 
 function learn_policy(container)
@@ -96,7 +99,7 @@ function learn_policy(container)
 
    local Tau = 0.99
 
-   function pol(b)
+   local function pol(b)
       return eps_greedy_policy(learner, Eps, b)
    end
 
@@ -120,11 +123,11 @@ function learn_policy(container)
         end
       end
 
-      for i=1, BatchSize do
-        minibatch[i] = episodic_memory[math.random(#episodic_memory)]
-      end
-
       if #episodic_memory == MemorySize then
+        for i=1, BatchSize do
+          minibatch[i] = episodic_memory[math.random(#episodic_memory)]
+        end
+
         local err = learner:learn(minibatch)
         learner:apply(LRate / math.log(i+1))
       end
@@ -157,7 +160,7 @@ function learn_policy(container)
               P.with_multiplot(1,2,
                                function()
                                  P.plot_table(values)
-                                 P.plot_table(actions)
+                                 P.plot_table(container.log_val)
               end)
       end)
 

@@ -1,3 +1,5 @@
+local strict = require "std.strict"
+local _ENV = strict (_G)
 
 local GP = require 'gnuplot'
 
@@ -8,10 +10,10 @@ local NN = require 'nn'
 local M = {}
 -- Neural network policy
 local Cells = Board.S * Board.S -- num of elems on board
-local CellVars = 16 -- num of elem variants
+local CellVars = 10 -- num of elem variants
 local OutVars = 4
 
-local Alpha = 0.95 -- backup rate
+local Alpha = 0.50 -- backup rate
 local Gamma = 1
 
 -- build Torch-NN network, Estimates Q(s) = [a1,a2,a3,a4]
@@ -74,14 +76,14 @@ local function learn_minibatch(self, batch)
       self.out_t[a] = preds[a]
     end
 
-    if i == 1 and math.random() < 0.1 then
+    if math.random() < 0.001 then
       print(v0, v1, sample.action, sample.reward)
     end
 
-    if i < #batch then -- non-terminal state
-      self.out_t[sample.action] = Alpha * v0 + (1 - Alpha) * (sample.reward + Gamma * v1)
-    else
+    if sample.finish then -- terminal state
       self.out_t[sample.action] = Alpha * v0 + (1 - Alpha) * sample.reward
+    else
+      self.out_t[sample.action] = Alpha * v0 + (1 - Alpha) * (sample.reward + Gamma * v1)
     end
 
     self.cr:forward(preds, self.out_t)
